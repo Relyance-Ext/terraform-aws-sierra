@@ -20,8 +20,11 @@ data "aws_iam_policy_document" "main_kms_key" {
   # Regular use
   statement {
     principals {
-      type        = "AWS"
-      identifiers = [aws_iam_role.main.arn]
+      type = "AWS"
+      identifiers = concat(
+        [aws_iam_role.main.arn],
+        [for node_role in aws_iam_role.node : node_role.arn]
+      )
     }
     resources = [aws_kms_key.main.arn]
     actions = [

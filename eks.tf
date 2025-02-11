@@ -1,21 +1,17 @@
 locals {
-  relyance_taints = {
-    relyance = {
-      value  = "true"
-      effect = "NO_SCHEDULE"
-    }
+  ami_type = {
+    "x86_64" = "AL2023_x86_64_STANDARD"
+    "arm64"  = "AL2023_ARM_64_STANDARD"
   }
-  ssd_taints = {
-    ssd = {
-      value  = "true"
-      effect = "NO_SCHEDULE"
-    }
+
+  self_managed_labels = {
+    self-managed = "true"
   }
 
   # TODO: enable configuration (with guard rails) of the scaling and update configs here.
-  # TODO: enable actual autoscaling (node group alone is insufficient).
   node_groups = {
     base = {
+      arch = "x86_64"
       scaling_config = {
         desired_size = 1
         max_size     = 2
@@ -31,38 +27,6 @@ locals {
       taints = {} # This is the default for system services to run on, so no taints.
       # Map from key to map with value and effect
     },
-    cpu4_ram16 = {
-      scaling_config = {
-        desired_size = 2 # Until we figure out autoscaling, a couple nodes for redlp + gai-analyzer
-        max_size     = 2
-        min_size     = 0
-      }
-      update_config = {
-        max_unavailable = 1
-      }
-      instance_types = ["t3a.xlarge"]
-      labels = {
-        nodetype = "mediummemory"
-        relyance = "true"
-      }
-      taints = local.relyance_taints
-    },
-    cpu8_ram64_ssd300 = {
-      scaling_config = {
-        desired_size = 1 # Until we figure out autoscaling, one node for gai
-        max_size     = 2
-        min_size     = 0
-      }
-      update_config = {
-        max_unavailable = 1
-      }
-      instance_types = ["z1d.2xlarge"]
-      labels = {
-        nodetype = "highmemory"
-        relyance = "true"
-      }
-      taints = merge(local.relyance_taints, local.ssd_taints)
-    }
   }
 }
 
@@ -96,6 +60,25 @@ resource "aws_eks_cluster" "main" {
   enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
 
   tags = local.default_tags
+
+  # EKS Auto Mode
+  bootstrap_self_managed_addons = false
+
+  compute_config {
+    enabled       = true
+    node_pools    = ["system", "general-purpose"]
+    node_role_arn = aws_iam_role.node["auto"].arn
+  }
+  kubernetes_network_config {
+    elastic_load_balancing {
+      enabled = true
+    }
+  }
+  storage_config {
+    block_storage {
+      enabled = true
+    }
+  }
 }
 
 # Node groups
@@ -117,7 +100,7 @@ resource "aws_eks_node_group" "main" {
 
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = "${var.base_name}_${each.key}"
-  node_role_arn   = aws_iam_role.main.arn
+  node_role_arn   = aws_iam_role.node["self"].arn
   subnet_ids      = local.subnet_ids
   scaling_config {
     desired_size = each.value.scaling_config.desired_size
@@ -128,8 +111,9 @@ resource "aws_eks_node_group" "main" {
     max_unavailable = each.value.update_config.max_unavailable
   }
 
+  ami_type       = local.ami_type[each.value.arch]
   instance_types = each.value.instance_types
-  labels         = each.value.labels
+  labels         = merge(each.value.labels, local.self_managed_labels)
   dynamic "taint" {
     for_each = each.value.taints
     content {
@@ -147,7 +131,7 @@ resource "aws_eks_node_group" "main" {
   }
 
   # Don't create the node pool until the node role has all the policies it needs.
-  depends_on = [aws_iam_role_policy_attachment.main]
+  depends_on = [aws_iam_role_policy_attachment.node]
 }
 
 # Add-ons. Declare independently (rather than for_each) to enable custom configurations
@@ -169,5 +153,11 @@ resource "aws_eks_addon" "kube-proxy" {
 resource "aws_eks_addon" "vpc-cni" {
   cluster_name = aws_eks_cluster.main.name
   addon_name   = "vpc-cni"
+  tags         = local.default_tags
+}
+
+resource "aws_eks_addon" "pod-identity-agent" {
+  cluster_name = aws_eks_cluster.main.name
+  addon_name   = "eks-pod-identity-agent"
   tags         = local.default_tags
 }

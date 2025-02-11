@@ -1,6 +1,6 @@
 # Derived variables used across components
 locals {
-  default_tags = { relyance-sierra = "0.1" }
+  default_tags = { relyance-sierra = "0.2.0" }
 
   # Per-env principals used by Relyance to retrieve findings data
   per_env_s3_read_access_principals = {

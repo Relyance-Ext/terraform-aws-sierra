@@ -60,7 +60,58 @@ granted `sts:AssumeRole` in accounts listed in `assumable_account_ids`
 ## Known limitations
 
 * EKS access is only supported on public endpoint from allowed IPv4 CIDR blocks.
-* Node autoscaling is not yet functional.
+
+## Example
+
+<!-- HCL below should be in sync with examples/sierra.tf -->
+```hcl
+# Single file with everything you need.
+# For local consistency during updates, run
+#     terraform init
+#     terraform plan -out sierra.tfplan
+#     terraform apply sierra.tfplan
+# For collaboration, configure backend for shared remote state file
+# For maintainability, replace hard-coded values with variables or outputs from other modules
+
+module "sierra" {
+  source  = "Relyance-Ext/sierra/aws"
+
+  env = "stage"
+  # Update these to match your AWS environment
+
+  policy = null # Set this to grant additional permissions to the Sierra role
+
+  # Networking: Pick ranges which don't conflict with your existing environment.
+  vpc_cidr     = "172.30.0.0/16"
+  service_cidr = "10.100.0.0/16"
+
+  subnet_cidrs = {
+    usw2-az1 = "172.30.0.0/20"
+    usw2-az2 = "172.30.16.0/20"
+    usw2-az3 = "172.30.32.0/20"
+    usw2-az4 = "172.30.48.0/20"
+  }
+
+  nat_subnet_cidr = "172.30.255.0/24" # Maybe overkill for a single NAT
+
+  # EKS
+  eks_public_access_cidrs = [
+    # Include at least one CI/CD, admin env, developer VPN, etc.
+  ]
+  
+  # Cross-account scan access
+  assumable_account_ids = [] # You must set at least one account ID, or set flag `assume_all_roles`
+
+  ssh_key_pair = null # Set this for SSH access to the nodes to troubleshoot
+
+  # The default value, true, makes Terraform applier a Kubernetes admin for later Helm deploy
+  eks_make_terraform_deployer_admin = true
+  # named IAM principal ARNs for additional admins
+  eks_kubectl_admins = {}
+}
+
+provider "aws" {}
+```
 
 <!-- Everything below this line is output from terraform-docs tool -->
 
@@ -70,13 +121,13 @@ granted `sts:AssumeRole` in accounts listed in `assumable_account_ids`
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.9 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 5.0 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 5.79 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 5.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 5.79 |
 | <a name="provider_random"></a> [random](#provider\_random) | n/a |
 
 ## Modules
@@ -92,17 +143,23 @@ granted `sts:AssumeRole` in accounts listed in `assumable_account_ids`
 |------|------|
 | [aws_ec2_instance_connect_endpoint.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ec2_instance_connect_endpoint) | resource |
 | [aws_eip.main-nat](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip) | resource |
+| [aws_eks_access_entry.admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_access_entry) | resource |
+| [aws_eks_access_policy_association.admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_access_policy_association) | resource |
+| [aws_eks_access_policy_association.cluster-admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_access_policy_association) | resource |
 | [aws_eks_addon.coredns](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
 | [aws_eks_addon.kube-proxy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
+| [aws_eks_addon.pod-identity-agent](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
 | [aws_eks_addon.vpc-cni](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
 | [aws_eks_cluster.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_cluster) | resource |
 | [aws_eks_node_group.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_node_group) | resource |
+| [aws_eks_pod_identity_association.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_pod_identity_association) | resource |
 | [aws_iam_role.eks](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role.node](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role.reader](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role_policy.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
-| [aws_iam_role_policy_attachment.eks-cluster-policy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
-| [aws_iam_role_policy_attachment.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.eks](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
+| [aws_iam_role_policy_attachment.node](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_internet_gateway.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/internet_gateway) | resource |
 | [aws_kms_alias.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_alias) | resource |
 | [aws_kms_key.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key) | resource |
@@ -131,6 +188,8 @@ granted `sts:AssumeRole` in accounts listed in `assumable_account_ids`
 | <a name="input_assumable_account_ids"></a> [assumable\_account\_ids](#input\_assumable\_account\_ids) | List of account IDs where resources can be assumed. | `list(string)` | `[]` | no |
 | <a name="input_assume_all_roles"></a> [assume\_all\_roles](#input\_assume\_all\_roles) | Enable role assumption on all resources | `bool` | `false` | no |
 | <a name="input_base_name"></a> [base\_name](#input\_base\_name) | base name for all resources | `string` | `"Relyance_Sierra"` | no |
+| <a name="input_eks_kubectl_admins"></a> [eks\_kubectl\_admins](#input\_eks\_kubectl\_admins) | map of unique IDs to IAM identity ARNs to make admin + cluster admin | `map(string)` | `{}` | no |
+| <a name="input_eks_make_terraform_deployer_admin"></a> [eks\_make\_terraform\_deployer\_admin](#input\_eks\_make\_terraform\_deployer\_admin) | If set, AWS identity performing Terraform deploy will gain kubectl access | `bool` | `true` | no |
 | <a name="input_eks_public_access_cidrs"></a> [eks\_public\_access\_cidrs](#input\_eks\_public\_access\_cidrs) | Allow EKS control plane access from the internet? | `list(string)` | `[]` | no |
 | <a name="input_eks_require_metadata_token"></a> [eks\_require\_metadata\_token](#input\_eks\_require\_metadata\_token) | If true, enforce more secure and modern IMDSv2 | `bool` | `true` | no |
 | <a name="input_env"></a> [env](#input\_env) | What environment are you accessing [stage, prod]? | `string` | n/a | yes |
@@ -150,5 +209,6 @@ granted `sts:AssumeRole` in accounts listed in `assumable_account_ids`
 
 | Name | Description |
 |------|-------------|
+| <a name="output_oidc_issuer"></a> [oidc\_issuer](#output\_oidc\_issuer) | OIDC URL to be provided to Relyance for cross-cloud access |
 | <a name="output_reader_external_id"></a> [reader\_external\_id](#output\_reader\_external\_id) | External ID required to be passed for the STS assume-role |
 <!-- END_TF_DOCS -->

@@ -86,6 +86,23 @@ variable "ssh_key_pair" {
   default     = null
 }
 
+variable "eks_make_terraform_deployer_admin" {
+  description = "If set, AWS identity performing Terraform deploy will gain kubectl access"
+  type        = bool
+  default     = true
+}
+
+variable "eks_kubectl_admins" {
+  description = "map of unique IDs to IAM identity ARNs to make admin + cluster admin"
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition     = !contains(keys(var.eks_kubectl_admins), "deployer")
+    error_message = "'deployer' is reserved for the identity which deploys terraform"
+  }
+}
+
 # S3
 
 variable "s3_bucket_suffix" {
@@ -118,6 +135,7 @@ variable "s3_read_access_principals" {
   default     = []
 }
 
+# Outbound STS
 variable "assumable_account_ids" {
   description = "List of account IDs where resources can be assumed."
   type        = list(string)
@@ -139,4 +157,3 @@ variable "assume_all_roles" {
     error_message = "The assumable_account_ids and assume_all_roles variables are mutually exclusive."
   }
 }
-
