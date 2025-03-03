@@ -144,6 +144,14 @@ resource "aws_eks_addon" "coredns" {
   depends_on = [aws_eks_node_group.main["base"]] # Don't try to create until nodes exist to run it.
 }
 
+resource "aws_eks_addon" "metrics-server" {
+  cluster_name = aws_eks_cluster.main.name
+  addon_name   = "metrics-server"
+  tags         = local.default_tags
+
+  depends_on = [aws_eks_node_group.main["base"]] # Don't try to create until nodes exist to run it.
+}
+
 resource "aws_eks_addon" "kube-proxy" {
   cluster_name = aws_eks_cluster.main.name
   addon_name   = "kube-proxy"

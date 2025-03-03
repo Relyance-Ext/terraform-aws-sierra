@@ -7,7 +7,7 @@
 # For maintainability, replace hard-coded values with variables or outputs from other modules
 
 module "sierra" {
-  source  = "Relyance-Ext/sierra/aws"
+  source = "Relyance-Ext/sierra/aws"
 
   env = "stage"
   # Update these to match your AWS environment
@@ -44,3 +44,8 @@ module "sierra" {
 }
 
 provider "aws" {}
+
+output "sierra" {
+  description = "Information to provide to Relyance"
+  value       = module.sierra
+}
