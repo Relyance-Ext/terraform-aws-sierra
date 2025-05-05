@@ -67,4 +67,23 @@ data "aws_iam_policy_document" "bucket" {
       ]
     }
   }
+
+  dynamic "statement" {
+    for_each = toset(length(var.wo_access_principals) > 0 ? [0] : [])
+    content {
+      principals {
+        type        = "AWS"
+        identifiers = var.wo_access_principals
+      }
+      resources = [aws_s3_bucket.bucket.arn, "${aws_s3_bucket.bucket.arn}/*"]
+      actions = [
+        "s3:ListBucket",
+
+        "s3:PutObject",
+        "s3:ListBucketMultipartUploads",
+        "s3:ListMultipartUploadParts",
+        "s3:AbortMultipartUpload",
+      ]
+    }
+  }
 }

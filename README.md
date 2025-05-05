@@ -77,6 +77,10 @@ module "sierra" {
   source  = "Relyance-Ext/sierra/aws"
 
   env = "stage"
+
+  # The GCP project in Relyance where findings data is captured
+  gcp_project = "example-project"
+
   # Update these to match your AWS environment
 
   policy = null # Set this to grant additional permissions to the Sierra role
@@ -108,6 +112,9 @@ module "sierra" {
   eks_make_terraform_deployer_admin = true
   # named IAM principal ARNs for additional admins
   eks_kubectl_admins = {}
+
+  # Enable Code Analyzer support
+  code_analysis_enabled = true
 }
 
 provider "aws" {}
@@ -127,14 +134,15 @@ provider "aws" {}
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 5.79 |
-| <a name="provider_random"></a> [random](#provider\_random) | n/a |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.96.0 |
+| <a name="provider_random"></a> [random](#provider\_random) | 3.7.2 |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
 | <a name="module_findings_bucket"></a> [findings\_bucket](#module\_findings\_bucket) | ./modules/s3 | n/a |
+| <a name="module_sci_bucket"></a> [sci\_bucket](#module\_sci\_bucket) | ./modules/s3 | n/a |
 | <a name="module_work_bucket"></a> [work\_bucket](#module\_work\_bucket) | ./modules/s3 | n/a |
 
 ## Resources
@@ -148,6 +156,7 @@ provider "aws" {}
 | [aws_eks_access_policy_association.cluster-admin](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_access_policy_association) | resource |
 | [aws_eks_addon.coredns](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
 | [aws_eks_addon.kube-proxy](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
+| [aws_eks_addon.metrics-server](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
 | [aws_eks_addon.pod-identity-agent](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
 | [aws_eks_addon.vpc-cni](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_addon) | resource |
 | [aws_eks_cluster.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_cluster) | resource |
@@ -157,6 +166,7 @@ provider "aws" {}
 | [aws_iam_role.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role.node](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role.reader](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role.sci](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role_policy.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy_attachment.eks](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
 | [aws_iam_role_policy_attachment.node](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy_attachment) | resource |
@@ -179,6 +189,7 @@ provider "aws" {}
 | [aws_availability_zones.all](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) | data source |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_iam_policy_document.main_kms_key](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_iam_policy_document.sci_assume_role_with_web_identity](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_session_context.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_session_context) | data source |
 
 ## Inputs
@@ -188,11 +199,13 @@ provider "aws" {}
 | <a name="input_assumable_account_ids"></a> [assumable\_account\_ids](#input\_assumable\_account\_ids) | List of account IDs where resources can be assumed. | `list(string)` | `[]` | no |
 | <a name="input_assume_all_roles"></a> [assume\_all\_roles](#input\_assume\_all\_roles) | Enable role assumption on all resources | `bool` | `false` | no |
 | <a name="input_base_name"></a> [base\_name](#input\_base\_name) | base name for all resources | `string` | `"Relyance_Sierra"` | no |
+| <a name="input_code_analysis_enabled"></a> [code\_analysis\_enabled](#input\_code\_analysis\_enabled) | Create related resources and set up cross-cloud role assumption for the Code Analyzer | `bool` | `false` | no |
 | <a name="input_eks_kubectl_admins"></a> [eks\_kubectl\_admins](#input\_eks\_kubectl\_admins) | map of unique IDs to IAM identity ARNs to make admin + cluster admin | `map(string)` | `{}` | no |
 | <a name="input_eks_make_terraform_deployer_admin"></a> [eks\_make\_terraform\_deployer\_admin](#input\_eks\_make\_terraform\_deployer\_admin) | If set, AWS identity performing Terraform deploy will gain kubectl access | `bool` | `true` | no |
 | <a name="input_eks_public_access_cidrs"></a> [eks\_public\_access\_cidrs](#input\_eks\_public\_access\_cidrs) | Allow EKS control plane access from the internet? | `list(string)` | `[]` | no |
 | <a name="input_eks_require_metadata_token"></a> [eks\_require\_metadata\_token](#input\_eks\_require\_metadata\_token) | If true, enforce more secure and modern IMDSv2 | `bool` | `true` | no |
 | <a name="input_env"></a> [env](#input\_env) | What environment are you accessing [stage, prod]? | `string` | n/a | yes |
+| <a name="input_gcp_project"></a> [gcp\_project](#input\_gcp\_project) | The GCP project name in Relyance used to facilitate cross-cloud communication | `string` | n/a | yes |
 | <a name="input_nat_subnet_cidr"></a> [nat\_subnet\_cidr](#input\_nat\_subnet\_cidr) | CIDR block for the outbound NAT's public subnet | `any` | n/a | yes |
 | <a name="input_policy"></a> [policy](#input\_policy) | IAM policy ARN, if any, to bind to the Sierra application role | `string` | `null` | no |
 | <a name="input_s3_bucket_suffix"></a> [s3\_bucket\_suffix](#input\_s3\_bucket\_suffix) | Suffix to add to bucket name to avoid (unexpected) collision. Contact Relyance if set | `string` | `""` | no |

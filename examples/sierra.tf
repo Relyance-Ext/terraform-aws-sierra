@@ -10,6 +10,10 @@ module "sierra" {
   source = "Relyance-Ext/sierra/aws"
 
   env = "stage"
+
+  # The GCP project in Relyance where findings data is captured
+  gcp_project = "example-project"
+
   # Update these to match your AWS environment
 
   policy = null # Set this to grant additional permissions to the Sierra role
@@ -41,6 +45,9 @@ module "sierra" {
   eks_make_terraform_deployer_admin = true
   # named IAM principal ARNs for additional admins
   eks_kubectl_admins = {}
+
+  # Enable Code Analyzer support
+  code_analysis_enabled = true
 }
 
 provider "aws" {}

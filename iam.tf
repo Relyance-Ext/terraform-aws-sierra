@@ -170,3 +170,36 @@ resource "aws_iam_role" "reader" {
 }
 
 resource "random_uuid" "reader_external_id" {}
+
+######
+
+data "aws_iam_policy_document" "sci_assume_role_with_web_identity" {
+  dynamic "statement" {
+    for_each = var.code_analysis_enabled ? [0] : []
+    content {
+      principals {
+        type        = "Federated"
+        identifiers = ["accounts.google.com"]
+      }
+
+      actions = ["sts:AssumeRoleWithWebIdentity"]
+
+      condition {
+        test     = "StringEquals"
+        variable = "accounts.google.com:oaud"
+        values   = [aws_iam_role.main.arn]
+      }
+
+      condition {
+        test     = "StringEquals"
+        variable = "accounts.google.com:aud"
+        values   = ["source-code-inspector@${var.gcp_project}.iam.gserviceaccount.com"]
+      }
+    }
+  }
+}
+
+resource "aws_iam_role" "sci" {
+  name               = "${var.base_name}_SCI"
+  assume_role_policy = data.aws_iam_policy_document.sci_assume_role_with_web_identity.json
+}

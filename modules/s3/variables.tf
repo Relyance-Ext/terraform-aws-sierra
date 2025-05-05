@@ -24,6 +24,11 @@ variable "ro_access_principals" {
   type        = list(string)
 }
 
+variable "wo_access_principals" {
+  description = "role/user ARNs with write-only access"
+  type        = list(string)
+}
+
 variable "expiration_days" {
   description = "Number of days before objects in bucket expire"
   type        = number

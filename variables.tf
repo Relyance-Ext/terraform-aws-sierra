@@ -14,6 +14,11 @@ variable "env" {
   }
 }
 
+variable "gcp_project" {
+  description = "The GCP project name in Relyance used to facilitate cross-cloud communication"
+  type        = string
+}
+
 variable "policy" {
   description = "IAM policy ARN, if any, to bind to the Sierra application role"
   type        = string
@@ -156,4 +161,10 @@ variable "assume_all_roles" {
     condition     = !(length(var.assumable_account_ids) > 0 && var.assume_all_roles == true)
     error_message = "The assumable_account_ids and assume_all_roles variables are mutually exclusive."
   }
+}
+
+variable "code_analysis_enabled" {
+  description = "Create related resources and set up cross-cloud role assumption for the Code Analyzer"
+  type        = bool
+  default     = false
 }
