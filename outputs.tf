@@ -5,5 +5,5 @@ output "reader_external_id" {
 
 output "oidc_issuer" {
   description = "OIDC URL to be provided to Relyance for cross-cloud access"
-  value       = aws_eks_cluster.main.identity[0].oidc[0].issuer
+  value       = local.eks_cluster_oidc_issuer
 }

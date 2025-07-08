@@ -11,12 +11,11 @@ module "sierra" {
 
   env = "stage"
 
-  # The GCP project in Relyance where findings data is captured
+  # The GCP project where findings data is captured
+  # To be provided by Relyance; required if code_analysis_enabled is true
   gcp_project = "example-project"
 
   # Update these to match your AWS environment
-
-  policy = null # Set this to grant additional permissions to the Sierra role
 
   # Networking: Pick ranges which don't conflict with your existing environment.
   vpc_cidr     = "172.30.0.0/16"
@@ -39,8 +38,6 @@ module "sierra" {
   # Cross-account scan access
   assumable_account_ids = [] # You must set at least one account ID, or set flag `assume_all_roles`
 
-  ssh_key_pair = null # Set this for SSH access to the nodes to troubleshoot
-
   # The default value, true, makes Terraform applier a Kubernetes admin for later Helm deploy
   eks_make_terraform_deployer_admin = true
   # named IAM principal ARNs for additional admins
@@ -48,6 +45,9 @@ module "sierra" {
 
   # Enable Code Analyzer support
   code_analysis_enabled = true
+
+  # Give bucket read access to additional principals for diagnostics and troubleshooting
+  s3_read_access_principals = []
 }
 
 provider "aws" {}

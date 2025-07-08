@@ -7,6 +7,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "bucket" {
       days_after_initiation = 7
     }
     status = "Enabled"
+    filter {} # Apply to all objects
   }
 
   rule {
@@ -15,6 +16,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "bucket" {
       days = var.expiration_days
     }
     status = "Enabled"
+    filter {} # Apply to all objects
   }
 }
 

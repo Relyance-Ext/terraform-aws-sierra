@@ -17,55 +17,70 @@ variable "env" {
 variable "gcp_project" {
   description = "The GCP project name in Relyance used to facilitate cross-cloud communication"
   type        = string
+  default     = null
+
+  validation {
+    condition     = !(var.code_analysis_enabled && var.gcp_project == null)
+    error_message = "gcp_project is required if code_analysis_enabled is true"
+  }
 }
 
-variable "policy" {
-  description = "IAM policy ARN, if any, to bind to the Sierra application role"
+# ## Big switch: Do we create resources, or reuse existing ones?
+variable "create_vpc_and_eks" {
+  description = "If false, assumes external VPC and EKS exist and skips their creation"
+  type        = bool
+  default     = true
+}
+
+variable "existing_eks_cluster_name" {
+  description = "Name of existing EKS cluster to use when create_vpc_and_eks is false"
   type        = string
   default     = null
+
+  validation {
+    condition     = !(!var.create_vpc_and_eks && var.existing_eks_cluster_name == null)
+    error_message = "existing_eks_cluster_name is required if create_vpc_and_eks is true"
+  }
+}
+
+variable "require_existing_eks_cluster_auto_mode" {
+  description = "Set false to allow existing EKS cluster not in auto mode"
+  type        = bool
+  default     = true
+}
+
+variable "require_existing_eks_cluster_addons" {
+  description = "Set false to allow existing EKS cluster without expected addons"
+  type        = bool
+  default     = true
 }
 
 # Networking
 variable "vpc_cidr" {
   description = "CIDR block (at least 16-bits large) for VPC"
   type        = string
-
-  validation {
-    condition     = can(cidrhost(var.vpc_cidr, 65535))
-    error_message = "Must be valid CIDR of at least 16 bits"
-  }
-}
-
-variable "service_cidr" {
-  description = "CIDR block (at least 16-bits large) for EKS services"
-  type        = string
-
-  validation {
-    condition     = can(cidrhost(var.service_cidr, 65535))
-    error_message = "Must be valid CIDR of at least 16 bits"
-  }
+  default     = ""
 }
 
 variable "subnet_cidrs" {
   description = "Map of AZ to CIDR block. Must have entry for every AZ in region"
   type        = map(string)
-  validation {
-    condition = alltrue([
-      for _, cidr in var.subnet_cidrs : can(cidrhost(cidr, 0))
-    ])
-    error_message = "All subnet CIDRs must be valid CIDR syntax"
-  }
+  default     = {}
 }
 
 variable "nat_subnet_cidr" {
   description = "CIDR block for the outbound NAT's public subnet"
-  validation {
-    condition     = can(cidrhost(var.nat_subnet_cidr, 15))
-    error_message = "Must be valid CIDR of at least 4 bits"
-  }
+  type        = string
+  default     = ""
 }
 
 # EKS
+variable "service_cidr" {
+  description = "CIDR block (at least 16-bits large) for EKS services (null for default autoassign)"
+  type        = string
+  default     = ""
+}
+
 variable "eks_public_access_cidrs" {
   description = "Allow EKS control plane access from the internet?"
   type        = list(string)
@@ -83,12 +98,6 @@ variable "eks_require_metadata_token" {
   description = "If true, enforce more secure and modern IMDSv2"
   type        = bool
   default     = true
-}
-
-variable "ssh_key_pair" {
-  description = "If set, allow SSH to EKS nodes using this pre-existing key pair"
-  type        = string
-  default     = null
 }
 
 variable "eks_make_terraform_deployer_admin" {
@@ -167,4 +176,17 @@ variable "code_analysis_enabled" {
   description = "Create related resources and set up cross-cloud role assumption for the Code Analyzer"
   type        = bool
   default     = false
+}
+
+## Test only
+
+variable "override_service_account" {
+  description = "Override service account name used for pod identity (testing only – do not use in production)"
+  type        = string
+  default     = null
+
+  validation {
+    condition     = !(var.env == "prod" && var.override_service_account != null)
+    error_message = "override_serivce_account is only for testing and cannot be used in prod environment"
+  }
 }

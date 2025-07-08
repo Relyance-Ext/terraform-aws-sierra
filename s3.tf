@@ -38,17 +38,18 @@ module "work_bucket" {
 
 module "sci_bucket" {
   source = "./modules/s3"
+  count  = var.code_analysis_enabled ? 1 : 0
 
   name                   = "relyance-sci-${local.account_id}${var.s3_bucket_suffix}"
   tags                   = local.default_tags
   full_access_principals = [aws_iam_role.main.arn]
   rw_access_principals   = []
   ro_access_principals   = []
-  wo_access_principals   = [aws_iam_role.sci.arn]
+  wo_access_principals   = aws_iam_role.sci[*].arn
   kms_key_arn            = aws_kms_key.main.arn
   use_bucket_keys        = var.s3_use_bucket_keys
   expiration_days        = var.s3_workspace_expiration_days
 }
 
-# NOTE: The SCA process will read from the SCI bucket and write it's findings to the "findings bucket".
+# NOTE: The SCA process will read from the SCI bucket and write its findings to the "findings bucket".
 
