@@ -1,4 +1,4 @@
-# Sierra Core Environment in AWS Terraform Module
+# InHost Core Environment in AWS Terraform Module
 
 ## Introduction
 
@@ -7,13 +7,12 @@ Visit [relyance.ai](https://relyance.ai) to learn more about our services.
 
 ## Usage
 
-When you have agreed to sign up for Sierra,
+When you have agreed to sign up for InHost,
 this module will stand up infrastructure for core environment.
 Init, plan, and apply the module, providing values:
 
 * Subnet CIDR blocks compatible with your network
 * CIDR blocks for CI/CD and administrative access
-* Your environment ("stage" or "prod")
 
 In order to be functional, you must
 
@@ -25,6 +24,8 @@ In order to be functional, you must
   * This is still in active development; contact Relyance for support.
 
 ### Resources Created
+
+InHost development codename "Sierra" is still in use for cloud resources.
 
 All resources will have the tag `relyance-sierra` set to the module version.
 
@@ -92,8 +93,6 @@ In this mode, the Terraform module only creates
 module "sierra" {
   source = "Relyance-Ext/sierra/aws"
 
-  env = "stage"
-
   # The GCP project where findings data is captured
   # To be provided by Relyance; required if code_analysis_enabled is true
   gcp_project = "example-project"
@@ -158,42 +157,16 @@ Remember, the cluster should be auto mode, with EKS pod identity agent addon ins
 module "sierra" {
   source = "Relyance-Ext/sierra/aws"
 
-  env = "stage"
-
-  # The GCP project where findings data is captured
-  # To be provided by Relyance; required if code_analysis_enabled is true
-  gcp_project = "example-project"
-
   # Update these to match your AWS environment
-
-  # Networking: Pick ranges which don't conflict with your existing environment.
-  vpc_cidr     = "172.30.0.0/16"
-  service_cidr = "10.100.0.0/16"
-
-  subnet_cidrs = {
-    usw2-az1 = "172.30.0.0/20"
-    usw2-az2 = "172.30.16.0/20"
-    usw2-az3 = "172.30.32.0/20"
-    usw2-az4 = "172.30.48.0/20"
-  }
-
-  nat_subnet_cidr = "172.30.255.0/24" # Maybe overkill for a single NAT
-
-  # EKS
-  eks_public_access_cidrs = [
-    # Include at least one CI/CD, admin env, developer VPN, etc.
-  ]
+  create_vpc_and_eks = false
+  # Expects auto mode cluster with eks-pod-identity-agent addon installed
+  existing_eks_cluster_name = "Customer-Cluster"
 
   # Cross-account scan access
   assumable_account_ids = [] # You must set at least one account ID, or set flag `assume_all_roles`
 
-  # The default value, true, makes Terraform applier a Kubernetes admin for later Helm deploy
-  eks_make_terraform_deployer_admin = true
-  # named IAM principal ARNs for additional admins
-  eks_kubectl_admins = {}
-
   # Enable Code Analyzer support
-  code_analysis_enabled = true
+  code_analysis_enabled = false
 
   # Give bucket read access to additional principals for diagnostics and troubleshooting
   s3_read_access_principals = []
@@ -205,6 +178,7 @@ output "sierra" {
   description = "Information to provide to Relyance"
   value       = module.sierra
 }
+
 ```
 
 <!-- Everything below this line is output from terraform-docs markdown table -->

@@ -23,7 +23,7 @@ data "aws_iam_policy_document" "main_kms_key" {
       type = "AWS"
       identifiers = concat(
         [aws_iam_role.main.arn],
-        module.eks[*].node_role_arns
+        var.create_vpc_and_eks ? module.eks[0].node_role_arns : [],
       )
     }
     resources = [aws_kms_key.main.arn]

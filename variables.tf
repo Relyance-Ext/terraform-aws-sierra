@@ -7,6 +7,7 @@ variable "base_name" {
 variable "env" {
   description = "What environment are you accessing [stage, prod]?"
   type        = string
+  default     = "prod"
 
   validation {
     condition     = contains(keys(local.per_env_s3_read_access_principals), var.env)
@@ -39,7 +40,7 @@ variable "existing_eks_cluster_name" {
 
   validation {
     condition     = !(!var.create_vpc_and_eks && var.existing_eks_cluster_name == null)
-    error_message = "existing_eks_cluster_name is required if create_vpc_and_eks is true"
+    error_message = "existing_eks_cluster_name is required if create_vpc_and_eks is false"
   }
 }
 

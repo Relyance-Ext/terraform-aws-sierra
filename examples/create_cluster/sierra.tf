@@ -9,8 +9,6 @@
 module "sierra" {
   source = "Relyance-Ext/sierra/aws"
 
-  env = "stage"
-
   # The GCP project where findings data is captured
   # To be provided by Relyance; required if code_analysis_enabled is true
   gcp_project = "example-project"

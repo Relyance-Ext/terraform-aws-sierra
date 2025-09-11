@@ -9,8 +9,6 @@
 module "sierra" {
   source = "Relyance-Ext/sierra/aws"
 
-  env = "stage"
-
   # Update these to match your AWS environment
   create_vpc_and_eks = false
   # Expects auto mode cluster with eks-pod-identity-agent addon installed

@@ -91,6 +91,8 @@ resource "aws_launch_template" "main" {
   }
 
   user_data = filebase64("${path.module}/src/launch-script.sh")
+
+  tags = var.default_tags
 }
 
 resource "aws_eks_node_group" "main" {
