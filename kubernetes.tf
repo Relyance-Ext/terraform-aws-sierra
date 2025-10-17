@@ -19,4 +19,3 @@ resource "aws_eks_pod_identity_association" "main" {
   service_account = each.value.sa
   role_arn        = aws_iam_role.main.arn
 }
-

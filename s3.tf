@@ -52,4 +52,3 @@ module "sci_bucket" {
 }
 
 # NOTE: The SCA process will read from the SCI bucket and write its findings to the "findings bucket".
-

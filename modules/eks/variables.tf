@@ -39,6 +39,11 @@ variable "kms_key_arn" {
 }
 
 variable "default_tags" {
-  description = "Default tags to apply to all AWS resources created in this module"
+  description = "Default tags to apply to non-node AWS resources created in this module"
+  type        = map(string)
+}
+
+variable "node_tags" {
+  description = "Default tags to apply to EKS nodes"
   type        = map(string)
 }

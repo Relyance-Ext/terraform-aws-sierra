@@ -59,6 +59,25 @@ Finally, on order to scan, the `Relyance_Sierra` role is
 granted `sts:AssumeRole` in accounts listed in `assumable_account_ids`
 (or any account by setting `assume_all_roles` flag to true)
 
+#### Auto-mode Node Tags
+
+By default, AWS auto mode does not let you apply tags to nodes created by auto mode.
+If your AWS tag policy requires that nodes have certain tags to be created, and/or
+if a cleanup process will remove any nodes without those tags, additional steps are
+required to set up alternative node class and node pools.
+
+* Set all required tags into the `default_tags` variable
+* Set the `enable_auto_mode_node_tags` flag to true
+* Ensure that you have sufficient privileges to run `aws eks get-token` on the new cluster
+  * `eks_make_terraform_deployer_admin`, which defaults true, should guarantee this access.
+* Ensure that you have a network route to the control plane
+  * Add CIDR containing your current public address (or VPN egress address) to `eks_public_access_cidrs`
+  * If you want to use internal connectivity,
+    * plan and apply first with `create_kubernetes_resources = false`,
+    * establish network route and private DNS to the cluster's private control plane, and
+    * plan and apply again with `create_kubernetes_resources` removed (default is `true`).
+* Ensure that all InHost pods run on the custom nodeclass `relyance-inhost`
+  * In Relyance-provided Helm, set `aws.nodeclass: relyance-sierra` in your tenant-specific values file.
 
 ### Alternate mode: use existing EKS cluster
 
@@ -126,13 +145,26 @@ module "sierra" {
   eks_kubectl_admins = {}
 
   # Enable Code Analyzer support
-  code_analysis_enabled = true
+  code_analysis_enabled = false
 
   # Give bucket read access to additional principals for diagnostics and troubleshooting
   s3_read_access_principals = []
+
+  # Tags to apply in all resources (e.g. for compliance with organization tag policy)
+  default_tags = {
+    # key = value
+  }
+
+  # If your org enforces tag policy, set true to support auto mode nodes with default_tags applied
+  enable_auto_mode_node_tags = false
 }
 
-provider "aws" {}
+provider "aws" {
+  default_tags {
+    # Set tags in var.default_tags to add to all resources, including dynamically-created.
+    tags = module.sierra.default_tags
+  }
+}
 
 output "sierra" {
   description = "Information to provide to Relyance"
@@ -170,15 +202,24 @@ module "sierra" {
 
   # Give bucket read access to additional principals for diagnostics and troubleshooting
   s3_read_access_principals = []
+
+  # Tags to apply in all resources (e.g. for compliance with organization tag policy)
+  default_tags = {
+    # key = value
+  }
 }
 
-provider "aws" {}
+provider "aws" {
+  default_tags {
+    # Set tags in var.default_tags to add to all resources, including dynamically-created.
+    tags = module.sierra.default_tags
+  }
+}
 
 output "sierra" {
   description = "Information to provide to Relyance"
   value       = module.sierra
 }
-
 ```
 
 <!-- Everything below this line is output from terraform-docs markdown table -->
@@ -196,7 +237,9 @@ output "sierra" {
 | Name | Version |
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | 5.98.0 |
+| <a name="provider_http"></a> [http](#provider\_http) | n/a |
 | <a name="provider_random"></a> [random](#provider\_random) | 3.7.2 |
+| <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
 
@@ -205,6 +248,7 @@ output "sierra" {
 | <a name="module_eks"></a> [eks](#module\_eks) | ./modules/eks | n/a |
 | <a name="module_existing_eks"></a> [existing\_eks](#module\_existing\_eks) | ./modules/existing_eks | n/a |
 | <a name="module_findings_bucket"></a> [findings\_bucket](#module\_findings\_bucket) | ./modules/s3 | n/a |
+| <a name="module_node_pools"></a> [node\_pools](#module\_node\_pools) | ./modules/node_pools | n/a |
 | <a name="module_sci_bucket"></a> [sci\_bucket](#module\_sci\_bucket) | ./modules/s3 | n/a |
 | <a name="module_vpc"></a> [vpc](#module\_vpc) | ./modules/vpc | n/a |
 | <a name="module_work_bucket"></a> [work\_bucket](#module\_work\_bucket) | ./modules/s3 | n/a |
@@ -222,10 +266,12 @@ output "sierra" {
 | [aws_kms_key.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key) | resource |
 | [aws_kms_key_policy.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key_policy) | resource |
 | [random_uuid.reader_external_id](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/uuid) | resource |
+| [terraform_data.explain_kube_access](https://registry.terraform.io/providers/hashicorp/terraform/latest/docs/resources/data) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_iam_policy_document.main_kms_key](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.sci_assume_role_with_web_identity](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_session_context.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_session_context) | data source |
+| [http_http.control_plane_access](https://registry.terraform.io/providers/hashicorp/http/latest/docs/data-sources/http) | data source |
 
 ## Inputs
 
@@ -235,15 +281,18 @@ output "sierra" {
 | <a name="input_assume_all_roles"></a> [assume\_all\_roles](#input\_assume\_all\_roles) | Enable role assumption on all resources | `bool` | `false` | no |
 | <a name="input_base_name"></a> [base\_name](#input\_base\_name) | base name for all resources | `string` | `"Relyance_Sierra"` | no |
 | <a name="input_code_analysis_enabled"></a> [code\_analysis\_enabled](#input\_code\_analysis\_enabled) | Create related resources and set up cross-cloud role assumption for the Code Analyzer | `bool` | `false` | no |
+| <a name="input_create_kubernetes_resources"></a> [create\_kubernetes\_resources](#input\_create\_kubernetes\_resources) | Set false to skip Kubernetes resource creation until you can establish network access to EKS control plane and AWS auth | `bool` | `true` | no |
 | <a name="input_create_vpc_and_eks"></a> [create\_vpc\_and\_eks](#input\_create\_vpc\_and\_eks) | If false, assumes external VPC and EKS exist and skips their creation | `bool` | `true` | no |
+| <a name="input_default_tags"></a> [default\_tags](#input\_default\_tags) | Tags to apply to all AWS resources. Use instead of setting on aws provider to apply to dynamic resources. | `map(string)` | `{}` | no |
 | <a name="input_eks_kubectl_admins"></a> [eks\_kubectl\_admins](#input\_eks\_kubectl\_admins) | map of unique IDs to IAM identity ARNs to make admin + cluster admin | `map(string)` | `{}` | no |
 | <a name="input_eks_make_terraform_deployer_admin"></a> [eks\_make\_terraform\_deployer\_admin](#input\_eks\_make\_terraform\_deployer\_admin) | If set, AWS identity performing Terraform deploy will gain kubectl access | `bool` | `true` | no |
 | <a name="input_eks_public_access_cidrs"></a> [eks\_public\_access\_cidrs](#input\_eks\_public\_access\_cidrs) | Allow EKS control plane access from the internet? | `list(string)` | `[]` | no |
 | <a name="input_eks_require_metadata_token"></a> [eks\_require\_metadata\_token](#input\_eks\_require\_metadata\_token) | If true, enforce more secure and modern IMDSv2 | `bool` | `true` | no |
-| <a name="input_env"></a> [env](#input\_env) | What environment are you accessing [stage, prod]? | `string` | n/a | yes |
+| <a name="input_enable_auto_mode_node_tags"></a> [enable\_auto\_mode\_node\_tags](#input\_enable\_auto\_mode\_node\_tags) | Set true to apply default\_tags to auto mode nodes (required if | `bool` | `false` | no |
+| <a name="input_env"></a> [env](#input\_env) | What environment are you accessing [stage, prod]? | `string` | `"prod"` | no |
 | <a name="input_existing_eks_cluster_name"></a> [existing\_eks\_cluster\_name](#input\_existing\_eks\_cluster\_name) | Name of existing EKS cluster to use when create\_vpc\_and\_eks is false | `string` | `null` | no |
 | <a name="input_gcp_project"></a> [gcp\_project](#input\_gcp\_project) | The GCP project name in Relyance used to facilitate cross-cloud communication | `string` | `null` | no |
-| <a name="input_nat_subnet_cidr"></a> [nat\_subnet\_cidr](#input\_nat\_subnet\_cidr) | CIDR block for the outbound NAT's public subnet | `any` | n/a | yes |
+| <a name="input_nat_subnet_cidr"></a> [nat\_subnet\_cidr](#input\_nat\_subnet\_cidr) | CIDR block for the outbound NAT's public subnet | `string` | `""` | no |
 | <a name="input_override_service_account"></a> [override\_service\_account](#input\_override\_service\_account) | Override service account name used for pod identity (testing only – do not use in production) | `string` | `null` | no |
 | <a name="input_require_existing_eks_cluster_addons"></a> [require\_existing\_eks\_cluster\_addons](#input\_require\_existing\_eks\_cluster\_addons) | Set false to allow existing EKS cluster without expected addons | `bool` | `true` | no |
 | <a name="input_require_existing_eks_cluster_auto_mode"></a> [require\_existing\_eks\_cluster\_auto\_mode](#input\_require\_existing\_eks\_cluster\_auto\_mode) | Set false to allow existing EKS cluster not in auto mode | `bool` | `true` | no |
@@ -252,13 +301,14 @@ output "sierra" {
 | <a name="input_s3_read_access_principals"></a> [s3\_read\_access\_principals](#input\_s3\_read\_access\_principals) | Supplemental list of role/user ARNs for read access to the findings bucket | `list(string)` | `[]` | no |
 | <a name="input_s3_use_bucket_keys"></a> [s3\_use\_bucket\_keys](#input\_s3\_use\_bucket\_keys) | Enable bucket keys to reduce KMS costs in the S3 findings bucket | `bool` | `true` | no |
 | <a name="input_s3_workspace_expiration_days"></a> [s3\_workspace\_expiration\_days](#input\_s3\_workspace\_expiration\_days) | Number of days before objects in S3 workspace bucket expire | `number` | `7` | no |
-| <a name="input_service_cidr"></a> [service\_cidr](#input\_service\_cidr) | CIDR block (at least 16-bits large) for EKS services (null for default autoassign) | `string` | n/a | yes |
-| <a name="input_subnet_cidrs"></a> [subnet\_cidrs](#input\_subnet\_cidrs) | Map of AZ to CIDR block. Must have entry for every AZ in region | `map(string)` | n/a | yes |
-| <a name="input_vpc_cidr"></a> [vpc\_cidr](#input\_vpc\_cidr) | CIDR block (at least 16-bits large) for VPC | `string` | n/a | yes |
+| <a name="input_service_cidr"></a> [service\_cidr](#input\_service\_cidr) | CIDR block (at least 16-bits large) for EKS services (null for default autoassign) | `string` | `""` | no |
+| <a name="input_subnet_cidrs"></a> [subnet\_cidrs](#input\_subnet\_cidrs) | Map of AZ to CIDR block. Must have entry for every AZ in region | `map(string)` | `{}` | no |
+| <a name="input_vpc_cidr"></a> [vpc\_cidr](#input\_vpc\_cidr) | CIDR block (at least 16-bits large) for VPC | `string` | `""` | no |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
+| <a name="output_default_tags"></a> [default\_tags](#output\_default\_tags) | Tags to be applied to all resources |
 | <a name="output_oidc_issuer"></a> [oidc\_issuer](#output\_oidc\_issuer) | OIDC URL to be provided to Relyance for cross-cloud access |
 | <a name="output_reader_external_id"></a> [reader\_external\_id](#output\_reader\_external\_id) | External ID required to be passed for the STS assume-role |

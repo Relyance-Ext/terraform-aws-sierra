@@ -1,6 +1,20 @@
 # Derived variables used across components
 locals {
-  default_tags = { relyance-inhost = "0.5.1" }
+  terraform_module_version = "0.6.0"
+
+  # Used in validation of var.default_tags
+  reserved_tag_prefixes = [
+    "aws:",
+    "kubernetes.io/",
+    "karpenter.sh/",
+    "eks.amazonaws.com/"
+  ]
+  # Updating node pools/groups when we bump version is very disruptive, so let's not do that.
+  node_tags = var.default_tags
+  default_tags = merge(
+    local.node_tags,
+    { relyance-inhost = local.terraform_module_version }
+  )
 
   # Per-env principals used by Relyance to retrieve findings data
   per_env_s3_read_access_principals = {

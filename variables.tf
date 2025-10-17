@@ -15,6 +15,45 @@ variable "env" {
   }
 }
 
+variable "default_tags" {
+  description = "Tags to apply to all AWS resources. Use instead of setting on aws provider to apply to dynamic resources."
+  type        = map(string)
+  default     = {}
+
+  # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_Tags.html#tag-restrictions
+  # Limit key length
+  validation {
+    condition = alltrue([
+      for k in keys(var.default_tags) : (length(k) <= 128)
+    ])
+    error_message = "keys must be no longer than 128 characters"
+  }
+
+  # Restrict characters
+  validation {
+    condition = alltrue([
+      for k in keys(var.default_tags) : (length(regexall("^[A-Za-z0-9+\\-=\\._:/@]+$", k)) == 1)
+    ])
+    error_message = "keys must only have alphanumeric or one of: + - = . _ : @"
+  }
+
+  # Block reserved tags
+  validation {
+    condition = alltrue(flatten([
+      for k in keys(var.default_tags) : [
+        for prefix in local.reserved_tag_prefixes : !startswith(k, prefix)
+      ]
+    ]))
+    error_message = "Tag mustn't start with AWS-reserved prefix"
+  }
+
+  # Restrict total number of tags (50 is maximum, but reserve room for Relyance/EKS tags)
+  validation {
+    condition     = length(var.default_tags) <= 30
+    error_message = "Maximum of 30 customer-provided tags supported"
+  }
+}
+
 variable "gcp_project" {
   description = "The GCP project name in Relyance used to facilitate cross-cloud communication"
   type        = string
@@ -116,6 +155,18 @@ variable "eks_kubectl_admins" {
     condition     = !contains(keys(var.eks_kubectl_admins), "deployer")
     error_message = "'deployer' is reserved for the identity which deploys terraform"
   }
+}
+
+variable "enable_auto_mode_node_tags" {
+  description = "Set true to apply default_tags to auto mode nodes"
+  type        = bool
+  default     = false
+}
+
+variable "create_kubernetes_resources" {
+  description = "Set false to skip Kubernetes resource creation until you can establish network access to EKS control plane and AWS auth"
+  type        = bool
+  default     = true
 }
 
 # S3

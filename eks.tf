@@ -17,6 +17,7 @@ module "eks" {
     )
   )
   default_tags = local.default_tags
+  node_tags    = local.node_tags
 }
 
 module "existing_eks" {
@@ -32,7 +33,9 @@ locals {
   eks_cluster_module = (
     var.create_vpc_and_eks ? module.eks[0] : module.existing_eks[0]
   )
-  # Both modules have the same 2 outputs extracted below (implicit interface)
+  # Both modules have the same outputs extracted below (implicit interface)
   eks_cluster_name        = local.eks_cluster_module.cluster_name
   eks_cluster_oidc_issuer = local.eks_cluster_module.oidc_issuer
+  eks_cluster_endpoint    = local.eks_cluster_module.endpoint
+  eks_cluster_ca_data     = local.eks_cluster_module.certificate_authority
 }

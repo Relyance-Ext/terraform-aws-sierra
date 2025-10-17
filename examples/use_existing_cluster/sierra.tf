@@ -22,9 +22,19 @@ module "sierra" {
 
   # Give bucket read access to additional principals for diagnostics and troubleshooting
   s3_read_access_principals = []
+
+  # Tags to apply in all resources (e.g. for compliance with organization tag policy)
+  default_tags = {
+    # key = value
+  }
 }
 
-provider "aws" {}
+provider "aws" {
+  default_tags {
+    # Set tags in var.default_tags to add to all resources, including dynamically-created.
+    tags = module.sierra.default_tags
+  }
+}
 
 output "sierra" {
   description = "Information to provide to Relyance"

@@ -53,7 +53,10 @@ resource "aws_iam_role" "eks" {
     ]
   })
 
-  tags = var.default_tags
+  tags = merge(
+    var.default_tags,
+    { "eks:cluster-name" : var.base_name },
+  )
 }
 
 resource "aws_iam_role_policy_attachment" "eks" {
@@ -92,4 +95,39 @@ resource "aws_iam_role_policy_attachment" "node" {
   policy_arn = each.value.policy
 
   depends_on = [aws_iam_role.node]
+}
+
+# Inline policy allowing creation of tagged auto-mode nodes
+data "aws_iam_policy_document" "allow_tagged_node_creation" {
+  statement {
+    actions = ["ec2:CreateFleet", "ec2:RunInstances", "ec2:CreateLaunchTemplate"]
+
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/eks:eks-cluster-name"
+      values   = ["$${aws:PrincipalTag/eks:eks-cluster-name}"]
+    }
+
+    condition {
+      test     = "StringLike"
+      variable = "aws:RequestTag/eks:kubernetes-node-class-name"
+      values   = ["*"]
+    }
+
+    condition {
+      test     = "StringLike"
+      variable = "aws:RequestTag/eks:kubernetes-node-pool-name"
+      values   = ["*"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "allow_tagged_node_creation" {
+  role = aws_iam_role.eks.id
+
+  name = "AllowTaggedNodeCreation"
+
+  policy = data.aws_iam_policy_document.allow_tagged_node_creation.json
 }

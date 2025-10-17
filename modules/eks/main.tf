@@ -64,7 +64,7 @@ resource "aws_eks_cluster" "main" {
 
   compute_config {
     enabled       = true
-    node_pools    = ["system", "general-purpose"]
+    node_pools    = ["system", "general-purpose"] # These don't get configured tags and may not comply with tag policies
     node_role_arn = aws_iam_role.node["auto"].arn
   }
   kubernetes_network_config {
@@ -93,6 +93,10 @@ resource "aws_launch_template" "main" {
   user_data = filebase64("${path.module}/src/launch-script.sh")
 
   tags = var.default_tags
+  tag_specifications {
+    resource_type = "instance"
+    tags          = var.node_tags
+  }
 }
 
 resource "aws_eks_node_group" "main" {
