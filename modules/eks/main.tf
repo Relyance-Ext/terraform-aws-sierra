@@ -93,9 +93,13 @@ resource "aws_launch_template" "main" {
   user_data = filebase64("${path.module}/src/launch-script.sh")
 
   tags = var.default_tags
-  tag_specifications {
-    resource_type = "instance"
-    tags          = var.node_tags
+
+  dynamic "tag_specifications" {
+    for_each = length(var.node_tags) > 0 ? [0] : []
+    content {
+      resource_type = "instance"
+      tags          = var.node_tags
+    }
   }
 }
 
