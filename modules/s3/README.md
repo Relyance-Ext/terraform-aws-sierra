@@ -1,4 +1,6 @@
 <!-- Everything below this line is output from terraform-docs markdown table -->
+
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 No requirements.
@@ -44,3 +46,4 @@ No modules.
 | Name | Description |
 |------|-------------|
 | <a name="output_id"></a> [id](#output\_id) | n/a |
+<!-- END_TF_DOCS -->

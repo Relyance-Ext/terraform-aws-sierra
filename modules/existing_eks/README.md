@@ -1,4 +1,6 @@
 <!-- Everything below this line is output from terraform-docs markdown table -->
+
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 No requirements.
@@ -8,6 +10,7 @@ No requirements.
 | Name | Version |
 |------|---------|
 | <a name="provider_aws"></a> [aws](#provider\_aws) | n/a |
+| <a name="provider_null"></a> [null](#provider\_null) | n/a |
 
 ## Modules
 
@@ -17,6 +20,7 @@ No modules.
 
 | Name | Type |
 |------|------|
+| [null_resource.validate_existing_cluster](https://registry.terraform.io/providers/hashicorp/null/latest/docs/resources/resource) | resource |
 | [aws_eks_addon.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_addon) | data source |
 | [aws_eks_cluster.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/eks_cluster) | data source |
 
@@ -33,7 +37,7 @@ No modules.
 | Name | Description |
 |------|-------------|
 | <a name="output_certificate_authority"></a> [certificate\_authority](#output\_certificate\_authority) | Certificate authority data for EKS control plane |
-| <a name="output_cluster"></a> [cluster](#output\_cluster) | n/a |
 | <a name="output_cluster_name"></a> [cluster\_name](#output\_cluster\_name) | n/a |
 | <a name="output_endpoint"></a> [endpoint](#output\_endpoint) | URL of the EKS control plane endpoint |
 | <a name="output_oidc_issuer"></a> [oidc\_issuer](#output\_oidc\_issuer) | OIDC URL to be provided to Relyance for cross-cloud access |
+<!-- END_TF_DOCS -->

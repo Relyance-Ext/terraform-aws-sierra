@@ -1,4 +1,6 @@
 <!-- Everything below this line is output from terraform-docs markdown table -->
+
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 No requirements.
@@ -59,3 +61,4 @@ No modules.
 | <a name="output_endpoint"></a> [endpoint](#output\_endpoint) | URL of the EKS control plane endpoint |
 | <a name="output_node_role_arns"></a> [node\_role\_arns](#output\_node\_role\_arns) | ARNs of all roles associated with roles |
 | <a name="output_oidc_issuer"></a> [oidc\_issuer](#output\_oidc\_issuer) | OIDC URL to be provided to Relyance for cross-cloud access |
+<!-- END_TF_DOCS -->

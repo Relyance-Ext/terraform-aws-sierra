@@ -26,12 +26,20 @@ variable "subnet_cidrs" {
 }
 
 variable "nat_subnet_cidr" {
-  description = "CIDR block for the public subnet used by the NAT gateway"
+  description = "CIDR block for the public subnets used by NAT gateways (will be split into two equal-size subnets; must be /27 or larger so result is at least /28)"
   type        = string
 
   validation {
-    condition     = can(cidrhost(var.nat_subnet_cidr, 15))
-    error_message = "Must be valid CIDR of at least 4 bits"
+    condition     = can(cidrhost(var.nat_subnet_cidr, 0))
+    error_message = "nat_subnet_cidr must be a valid IPv4 CIDR (e.g., 10.0.100.0/27)."
+  }
+
+  validation {
+    condition = (
+      can(regex("/(\\d+)$", var.nat_subnet_cidr)) &&
+      tonumber(regex("/(\\d+)$", var.nat_subnet_cidr)[0]) <= 27
+    )
+    error_message = "nat_subnet_cidr must have prefix length <= 27 so splitting into two equal subnets results in subnets no smaller than /28 (AWS minimum subnet size)."
   }
 }
 

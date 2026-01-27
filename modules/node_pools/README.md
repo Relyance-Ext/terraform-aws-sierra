@@ -19,6 +19,8 @@ but makes it far from straightforward to add tags to auto mode nodes.
   will be able to create nodes to host pods.
 
 <!-- Everything below this line is output from terraform-docs markdown table -->
+
+<!-- BEGIN_TF_DOCS -->
 ## Requirements
 
 No requirements.
@@ -54,3 +56,4 @@ No modules.
 ## Outputs
 
 No outputs.
+<!-- END_TF_DOCS -->

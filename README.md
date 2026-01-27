@@ -236,9 +236,9 @@ output "sierra" {
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.98.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 5.79 |
 | <a name="provider_http"></a> [http](#provider\_http) | n/a |
-| <a name="provider_random"></a> [random](#provider\_random) | 3.7.2 |
+| <a name="provider_random"></a> [random](#provider\_random) | n/a |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
 
 ## Modules
@@ -288,7 +288,7 @@ output "sierra" {
 | <a name="input_eks_make_terraform_deployer_admin"></a> [eks\_make\_terraform\_deployer\_admin](#input\_eks\_make\_terraform\_deployer\_admin) | If set, AWS identity performing Terraform deploy will gain kubectl access | `bool` | `true` | no |
 | <a name="input_eks_public_access_cidrs"></a> [eks\_public\_access\_cidrs](#input\_eks\_public\_access\_cidrs) | Allow EKS control plane access from the internet? | `list(string)` | `[]` | no |
 | <a name="input_eks_require_metadata_token"></a> [eks\_require\_metadata\_token](#input\_eks\_require\_metadata\_token) | If true, enforce more secure and modern IMDSv2 | `bool` | `true` | no |
-| <a name="input_enable_auto_mode_node_tags"></a> [enable\_auto\_mode\_node\_tags](#input\_enable\_auto\_mode\_node\_tags) | Set true to apply default\_tags to auto mode nodes (required if | `bool` | `false` | no |
+| <a name="input_enable_auto_mode_node_tags"></a> [enable\_auto\_mode\_node\_tags](#input\_enable\_auto\_mode\_node\_tags) | Set true to apply default\_tags to auto mode nodes | `bool` | `false` | no |
 | <a name="input_env"></a> [env](#input\_env) | What environment are you accessing [stage, prod]? | `string` | `"prod"` | no |
 | <a name="input_existing_eks_cluster_name"></a> [existing\_eks\_cluster\_name](#input\_existing\_eks\_cluster\_name) | Name of existing EKS cluster to use when create\_vpc\_and\_eks is false | `string` | `null` | no |
 | <a name="input_gcp_project"></a> [gcp\_project](#input\_gcp\_project) | The GCP project name in Relyance used to facilitate cross-cloud communication | `string` | `null` | no |
@@ -310,5 +310,7 @@ output "sierra" {
 | Name | Description |
 |------|-------------|
 | <a name="output_default_tags"></a> [default\_tags](#output\_default\_tags) | Tags to be applied to all resources |
+| <a name="output_enable_auto_mode_node_tags"></a> [enable\_auto\_mode\_node\_tags](#output\_enable\_auto\_mode\_node\_tags) | Is there support for auto mode nodes with custom tags? |
 | <a name="output_oidc_issuer"></a> [oidc\_issuer](#output\_oidc\_issuer) | OIDC URL to be provided to Relyance for cross-cloud access |
 | <a name="output_reader_external_id"></a> [reader\_external\_id](#output\_reader\_external\_id) | External ID required to be passed for the STS assume-role |
+<!-- END_TF_DOCS -->
