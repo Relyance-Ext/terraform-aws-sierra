@@ -11,7 +11,7 @@ module "sierra" {
 
   # The GCP project where findings data is captured
   # To be provided by Relyance; required if code_analysis_enabled is true
-  gcp_project = "example-project"
+  # gcp_project = "example-project"
 
   # Update these to match your AWS environment
 

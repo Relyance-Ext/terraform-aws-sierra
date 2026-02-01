@@ -9,10 +9,16 @@
 module "sierra" {
   source = "Relyance-Ext/sierra/aws"
 
+  # The GCP project where findings data is captured
+  # To be provided by Relyance; required if code_analysis_enabled is true
+  # gcp_project = "example-project"
+
   # Update these to match your AWS environment
   create_vpc_and_eks = false
-  # Expects auto mode cluster with eks-pod-identity-agent addon installed
-  existing_eks_cluster_name = "Customer-Cluster"
+  # Supports both auto mode and standard mode clusters with eks-pod-identity-agent addon installed
+  # Set to true if using an auto mode cluster
+  require_existing_eks_cluster_auto_mode = false
+  existing_eks_cluster_name              = "Customer-Cluster"
 
   # Cross-account scan access
   assumable_account_ids = [] # You must set at least one account ID, or set flag `assume_all_roles`

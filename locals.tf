@@ -1,6 +1,6 @@
 # Derived variables used across components
 locals {
-  terraform_module_version = "0.6.1"
+  terraform_module_version = "0.7.0"
 
   # Used in validation of var.default_tags
   reserved_tag_prefixes = [
