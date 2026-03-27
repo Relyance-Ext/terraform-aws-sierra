@@ -18,7 +18,14 @@ In order to be functional, you must
 
 * Set up role in every data account which
   * can read S3 buckets and decrypt using those buckets' KMS keys, if any, and
-  * can be assumed by the `Relyance_Sierra` role.
+  * has a trust policy allowing `Relyance_Sierra` to assume it, with **both** `sts:AssumeRole` and `sts:TagSession` actions (both required for EKS Pod Identity):
+    ```json
+    {
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::<InHost-Account-ID>:role/Relyance_Sierra" },
+      "Action": ["sts:AssumeRole", "sts:TagSession"]
+    }
+    ```
   * We will be providing an additional Terraform module to facilitate setup.
 * Install Relyance Helm chart into the EKS cluster
   * This is still in active development; contact Relyance for support.
@@ -39,13 +46,14 @@ All resources will have the tag `relyance-sierra` set to the module version.
 
 #### IAM resources
 
-The module creates 3 roles:
+The module creates the following roles:
 
 * `Relyance_Sierra`: Used by Kubernetes pods where Relyance's code will run
 * `Relyance_Sierra_Reader`: Used by Relyance to read from findings bucket
   * This role has a trust policy allowing an env-specific identity to assume it.
-* `Reyance_Sierra_Node` and `Relyance_Sierra_Auto` for EKS nodes
-* `Relyance_Sierra_Cluster`: Used by the cluster itself
+* `Relyance_Sierra_Node` and `Relyance_Sierra_Auto` for EKS nodes (only when `create_vpc_and_eks = true`)
+* `Relyance_Sierra_Cluster`: Used by the cluster itself (only when `create_vpc_and_eks = true`)
+* `Relyance_Sierra_SCI`: Used for source code analysis (only when `code_analysis_enabled = true`)
 
 In addition to permissions directly on module resources,
 these roles are granted account-level permissions by attaching standard policies:
@@ -85,7 +93,7 @@ By setting
 * `create_vpc_and_eks = false`
 * `existing_eks_cluster_name = "Customer-Cluster"`
 
-you can deploy Relyance InHost into your existing Auto Mode EKS cluster.
+you can deploy Relyance InHost into your existing EKS cluster (both Auto Mode and standard clusters are supported).
 In this mode, the Terraform module only creates
 * S3 buckets
 * KMS key (used only for S3 bucket encryption)
@@ -309,7 +317,10 @@ output "sierra" {
 
 | Name | Description |
 |------|-------------|
+| <a name="output_aws_account_id"></a> [aws\_account\_id](#output\_aws\_account\_id) | AWS account ID where this module is deployed |
+| <a name="output_cluster_created_by_module"></a> [cluster\_created\_by\_module](#output\_cluster\_created\_by\_module) | Whether the EKS cluster was created by this module (true) or an existing cluster was used (false) |
 | <a name="output_default_tags"></a> [default\_tags](#output\_default\_tags) | Tags to be applied to all resources |
+| <a name="output_eks_cluster_auto_mode"></a> [eks\_cluster\_auto\_mode](#output\_eks\_cluster\_auto\_mode) | Whether the EKS cluster is running in auto mode. Always true for module-created clusters. |
 | <a name="output_enable_auto_mode_node_tags"></a> [enable\_auto\_mode\_node\_tags](#output\_enable\_auto\_mode\_node\_tags) | Is there support for auto mode nodes with custom tags? |
 | <a name="output_oidc_issuer"></a> [oidc\_issuer](#output\_oidc\_issuer) | OIDC URL to be provided to Relyance for cross-cloud access |
 | <a name="output_reader_external_id"></a> [reader\_external\_id](#output\_reader\_external\_id) | External ID required to be passed for the STS assume-role |

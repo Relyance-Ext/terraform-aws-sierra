@@ -17,3 +17,18 @@ output "enable_auto_mode_node_tags" {
   description = "Is there support for auto mode nodes with custom tags?"
   value       = var.enable_auto_mode_node_tags
 }
+
+output "aws_account_id" {
+  description = "AWS account ID where this module is deployed"
+  value       = local.account_id
+}
+
+output "cluster_created_by_module" {
+  description = "Whether the EKS cluster was created by this module (true) or an existing cluster was used (false)"
+  value       = var.create_vpc_and_eks
+}
+
+output "eks_cluster_auto_mode" {
+  description = "Whether the EKS cluster is running in auto mode. Always true for module-created clusters."
+  value       = var.create_vpc_and_eks ? true : module.existing_eks[0].is_auto_mode
+}

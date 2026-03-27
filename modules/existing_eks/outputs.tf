@@ -16,3 +16,8 @@ output "certificate_authority" {
   description = "Certificate authority data for EKS control plane"
   value       = base64decode(data.aws_eks_cluster.main.certificate_authority[0].data)
 }
+
+output "is_auto_mode" {
+  description = "Whether the existing EKS cluster has auto mode enabled"
+  value       = local.compute_config_enabled_raw == true
+}
