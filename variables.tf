@@ -230,6 +230,12 @@ variable "code_analysis_enabled" {
   default     = false
 }
 
+variable "enable_datadog" {
+  description = "Enable Datadog log forwarding for Sierra workloads. Creates an AWS Secrets Manager secret slot, IAM role, and EKS Pod Identity association. After applying, populate the secret with the API key provided by Relyance."
+  type        = bool
+  default     = false
+}
+
 ## Test only
 
 variable "override_service_account" {

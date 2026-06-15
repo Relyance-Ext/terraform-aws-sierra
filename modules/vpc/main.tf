@@ -103,9 +103,7 @@ resource "aws_route_table" "private" {
 # Associate private subnets with their respective route tables
 # Uses explicit mapping to ensure correct AZ-to-NAT routing
 resource "aws_route_table_association" "private" {
-  for_each = {
-    for s in aws_subnet.main : s.id => s
-  }
+  for_each = aws_subnet.main
 
   subnet_id      = each.value.id
   route_table_id = aws_route_table.private[local.az_to_nat_map[each.value.availability_zone_id]].id

@@ -19,3 +19,12 @@ resource "aws_eks_pod_identity_association" "main" {
   service_account = each.value.sa
   role_arn        = aws_iam_role.main.arn
 }
+
+resource "aws_eks_pod_identity_association" "datadog" {
+  count = var.enable_datadog ? 1 : 0
+
+  cluster_name    = local.eks_cluster_name
+  namespace       = "sierra"
+  service_account = "sierra-datadog"
+  role_arn        = aws_iam_role.datadog[0].arn
+}

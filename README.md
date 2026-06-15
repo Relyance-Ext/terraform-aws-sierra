@@ -54,6 +54,7 @@ The module creates the following roles:
 * `Relyance_Sierra_Node` and `Relyance_Sierra_Auto` for EKS nodes (only when `create_vpc_and_eks = true`)
 * `Relyance_Sierra_Cluster`: Used by the cluster itself (only when `create_vpc_and_eks = true`)
 * `Relyance_Sierra_SCI`: Used for source code analysis (only when `code_analysis_enabled = true`)
+* `Relyance_Sierra_Datadog`: Used by Datadog agent for log forwarding (only when `enable_datadog = true`)
 
 In addition to permissions directly on module resources,
 these roles are granted account-level permissions by attaching standard policies:
@@ -165,6 +166,9 @@ module "sierra" {
 
   # If your org enforces tag policy, set true to support auto mode nodes with default_tags applied
   enable_auto_mode_node_tags = false
+
+  # Enable Datadog log forwarding for Sierra workloads
+  enable_datadog = false
 }
 
 provider "aws" {
@@ -297,6 +301,7 @@ output "sierra" {
 | <a name="input_eks_public_access_cidrs"></a> [eks\_public\_access\_cidrs](#input\_eks\_public\_access\_cidrs) | Allow EKS control plane access from the internet? | `list(string)` | `[]` | no |
 | <a name="input_eks_require_metadata_token"></a> [eks\_require\_metadata\_token](#input\_eks\_require\_metadata\_token) | If true, enforce more secure and modern IMDSv2 | `bool` | `true` | no |
 | <a name="input_enable_auto_mode_node_tags"></a> [enable\_auto\_mode\_node\_tags](#input\_enable\_auto\_mode\_node\_tags) | Set true to apply default\_tags to auto mode nodes | `bool` | `false` | no |
+| <a name="input_enable_datadog"></a> [enable\_datadog](#input\_enable\_datadog) | Enable Datadog log forwarding for Sierra workloads. Creates an AWS Secrets Manager secret slot, IAM role, and EKS Pod Identity association. After applying, populate the secret with the API key provided by Relyance. | `bool` | `false` | no |
 | <a name="input_env"></a> [env](#input\_env) | What environment are you accessing [stage, prod]? | `string` | `"prod"` | no |
 | <a name="input_existing_eks_cluster_name"></a> [existing\_eks\_cluster\_name](#input\_existing\_eks\_cluster\_name) | Name of existing EKS cluster to use when create\_vpc\_and\_eks is false | `string` | `null` | no |
 | <a name="input_gcp_project"></a> [gcp\_project](#input\_gcp\_project) | The GCP project name in Relyance used to facilitate cross-cloud communication | `string` | `null` | no |
