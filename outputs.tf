@@ -32,3 +32,8 @@ output "eks_cluster_auto_mode" {
   description = "Whether the EKS cluster is running in auto mode. Always true for module-created clusters."
   value       = var.create_vpc_and_eks ? true : module.existing_eks[0].is_auto_mode
 }
+
+output "byok_secret_write_back" {
+  description = "Whether the scanner role may write refreshed OAuth tokens back to BYOK secrets (var.byok_secret_write_back). Pass it to the deployment: Helm value byokSecretWriteBack, or env var SECRET_REF_WRITE_BACK (\"true\"/\"false\") in the kustomize package. The two must match: with false here and write-back on in the deployment, each write-back is denied and logged."
+  value       = var.byok_secret_write_back
+}

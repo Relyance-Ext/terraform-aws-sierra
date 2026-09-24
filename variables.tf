@@ -236,6 +236,78 @@ variable "enable_datadog" {
   default     = false
 }
 
+# BYOK connection credentials in AWS Secrets Manager
+
+variable "byok_secret_arn_patterns" {
+  description = "ARNs or ARN patterns of the AWS Secrets Manager secrets that hold InHost BYOK connection credentials. The scanner role gets read access (and write access if byok_secret_write_back is true) to these secrets. Example: arn:aws:secretsmanager:us-west-2:111122223333:secret:relyance/inhost/*. An empty list creates no policy."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for arn in var.byok_secret_arn_patterns :
+      startswith(arn, "arn:aws") && strcontains(arn, ":secretsmanager:")
+    ])
+    error_message = "Each entry must be a Secrets Manager ARN or ARN pattern: it must start with 'arn:aws' and contain ':secretsmanager:'."
+  }
+
+  validation {
+    condition     = length(var.byok_secret_arn_patterns) == length(distinct(var.byok_secret_arn_patterns))
+    error_message = "byok_secret_arn_patterns must not contain duplicates."
+  }
+}
+
+variable "byok_secret_kms_key_arns" {
+  description = "ARNs of the customer-managed KMS keys that encrypt the secrets in byok_secret_arn_patterns. The scanner role gets kms:Decrypt (and kms:GenerateDataKey if byok_secret_write_back is true), only through Secrets Manager. Leave empty for secrets encrypted with the AWS managed key aws/secretsmanager."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for arn in var.byok_secret_kms_key_arns :
+      startswith(arn, "arn:aws") && strcontains(arn, ":kms:") && strcontains(arn, ":key/")
+    ])
+    error_message = "Each entry must be a KMS key ARN (arn:aws...:kms:<region>:<account>:key/<key-id>). Aliases are not supported in IAM policy resources."
+  }
+
+  validation {
+    condition     = !(length(var.byok_secret_kms_key_arns) > 0 && length(var.byok_secret_arn_patterns) == 0)
+    error_message = "byok_secret_kms_key_arns requires byok_secret_arn_patterns."
+  }
+}
+
+variable "byok_secret_write_back" {
+  description = "If true, the scanner role gets secretsmanager:PutSecretValue on byok_secret_arn_patterns (and kms:GenerateDataKey on byok_secret_kms_key_arns). The scanner uses it only when a token refresh changes a token: it writes the changed keys, merged onto the current secret value. A failed write-back is logged and the scan continues with the in-memory token. Set false for read-only secrets, and set the same value in the deployment (output byok_secret_write_back; Helm value byokSecretWriteBack or env var SECRET_REF_WRITE_BACK). With write-back off, vendors that rotate refresh tokens fail after the first refresh; vendors with static credentials are not affected."
+  type        = bool
+  default     = true
+}
+
+# Kubernetes service account binding
+
+variable "additional_service_account_namespaces" {
+  description = "Additional Kubernetes namespaces whose 'relyance' service account gets the Relyance_Sierra role through EKS Pod Identity. The 'sierra' namespace is always bound. Add 'inhost' for the kustomize deployment package, which deploys into namespace 'inhost' by default."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for ns in var.additional_service_account_namespaces :
+      length(regexall("^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$", ns)) == 1
+    ])
+    error_message = "Each entry must be a valid Kubernetes namespace name (RFC 1123 label)."
+  }
+
+  validation {
+    condition     = !contains(var.additional_service_account_namespaces, "sierra")
+    error_message = "The 'sierra' namespace is always bound. Do not list it here."
+  }
+
+  validation {
+    condition     = length(var.additional_service_account_namespaces) == length(distinct(var.additional_service_account_namespaces))
+    error_message = "additional_service_account_namespaces must not contain duplicates."
+  }
+}
+
 ## Test only
 
 variable "override_service_account" {

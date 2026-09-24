@@ -33,6 +33,13 @@ module "sierra" {
   default_tags = {
     # key = value
   }
+  # Kustomize deployments run in namespace "inhost". Bind it to the scanner role.
+  additional_service_account_namespaces = []
+
+  # BYOK connection secrets in AWS Secrets Manager (empty list = no access granted)
+  byok_secret_arn_patterns = [
+    # "arn:aws:secretsmanager:us-west-2:111122223333:secret:relyance/inhost/*",
+  ]
 }
 
 provider "aws" {

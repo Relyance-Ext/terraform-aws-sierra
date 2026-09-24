@@ -54,6 +54,13 @@ module "sierra" {
 
   # If your org enforces tag policy, set true to support auto mode nodes with default_tags applied
   enable_auto_mode_node_tags = false
+  # Kustomize deployments run in namespace "inhost". Bind it to the scanner role.
+  additional_service_account_namespaces = []
+
+  # BYOK connection secrets in AWS Secrets Manager (empty list = no access granted)
+  byok_secret_arn_patterns = [
+    # "arn:aws:secretsmanager:us-west-2:111122223333:secret:relyance/inhost/*",
+  ]
 }
 
 provider "aws" {

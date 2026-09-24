@@ -56,6 +56,9 @@ The module creates the following roles:
 * `Relyance_Sierra_SCI`: Used for source code analysis (only when `code_analysis_enabled = true`)
 * `Relyance_Sierra_Datadog`: Used by Datadog agent for log forwarding (only when `enable_datadog = true`)
 
+The `Relyance_Sierra` role gets an inline policy `byok-secrets` only when `byok_secret_arn_patterns` is set.
+See [BYOK secrets in AWS Secrets Manager](#byok-secrets-in-aws-secrets-manager).
+
 In addition to permissions directly on module resources,
 these roles are granted account-level permissions by attaching standard policies:
 
@@ -87,6 +90,123 @@ required to set up alternative node class and node pools.
     * plan and apply again with `create_kubernetes_resources` removed (default is `true`).
 * Ensure that all InHost pods run on the custom nodeclass `relyance-inhost`
   * In Relyance-provided Helm, set `aws.nodeclass: relyance-sierra` in your tenant-specific values file.
+
+#### Kubernetes namespace binding
+
+EKS Pod Identity binds the `Relyance_Sierra` role to one namespace and one service account.
+The module always binds namespace `sierra`, service account `relyance`.
+Existing Helm deployments run in namespace `sierra`.
+
+The kustomize deployment package deploys into namespace `inhost` by default.
+Pods in a namespace without an association get no AWS credentials, and every scan fails.
+For a kustomize deployment in namespace `inhost`, set:
+
+```hcl
+additional_service_account_namespaces = ["inhost"]
+```
+
+Each entry adds one association for service account `relyance` in that namespace.
+The existing `sierra` association does not change.
+A new association can take a few minutes to become active.
+
+### BYOK secrets in AWS Secrets Manager
+
+An InHost BYOK connection can reference an AWS Secrets Manager secret instead of a Kubernetes secret.
+The customer creates the secret in this account and enters the secret ARN in the connection's authentication step.
+Relyance stores only the ARN. Relyance does not receive the secret value.
+The scanner reads the secret at scan time with the `Relyance_Sierra` role.
+The scanner calls Secrets Manager in the region of the secret ARN.
+
+The secret value is a JSON object that the Relyance Integrations screen generates for the connection.
+It holds every required credential field of the authentication method, secret and non-secret,
+except top-level fields such as `data_storage_location`, which stay in the Relyance form.
+Non-secret fields and checkbox or dropdown options that have a form default can be omitted;
+the scanner uses the form default.
+Use one secret for each connection.
+The recommended name is `relyance/inhost/<vendor>/<connection-id>`.
+
+To grant access, set:
+
+```hcl
+byok_secret_arn_patterns = [
+  "arn:aws:secretsmanager:us-west-2:111122223333:secret:relyance/inhost/*",
+]
+
+# Only for secrets encrypted with a customer-managed KMS key.
+byok_secret_kms_key_arns = [
+  "arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab",
+]
+
+# Default is true. Set false for read-only secrets.
+byok_secret_write_back = true
+```
+
+#### Token write-back
+
+When write-back is on, the scanner writes to the secret only when a token refresh changes a token.
+It writes only the changed keys, merged onto the current secret value.
+It writes nothing when it only reads the secret.
+If a write-back fails (for example, `AccessDenied`), the scanner logs the failure with a reason code
+and continues the scan with the refreshed token in memory. The scan does not fail.
+
+`byok_secret_write_back` controls only the IAM permissions.
+The deployment has its own switch, which must have the same value.
+Use the module output `byok_secret_write_back`:
+
+* Helm chart: value `byokSecretWriteBack` (default `true`).
+* Kustomize package: env var `SECRET_REF_WRITE_BACK` (`"true"` or `"false"`, default `"true"`).
+
+When the switch is `false`, the scanner never writes to the secret.
+Vendors with static credentials are not affected.
+Vendors that rotate refresh tokens fail after the first token refresh, because the secret keeps the old refresh token.
+
+Do not turn on automatic rotation (Secrets Manager rotation with a Lambda function) for a secret of an OAuth
+connection that uses a refresh token. A rotation can replace the secret value after the scanner writes a refreshed token.
+The secret then has an old refresh token that the vendor does not accept, and the next scan fails authentication.
+
+The module then adds the inline policy `byok-secrets` to the `Relyance_Sierra` role:
+
+| Condition | Actions | Resources |
+|---|---|---|
+| Always | `secretsmanager:GetSecretValue` | `byok_secret_arn_patterns` |
+| `byok_secret_write_back = true` | `secretsmanager:PutSecretValue` | `byok_secret_arn_patterns` |
+| `byok_secret_kms_key_arns` is set | `kms:Decrypt` | `byok_secret_kms_key_arns` |
+| `byok_secret_kms_key_arns` is set and `byok_secret_write_back = true` | `kms:GenerateDataKey` | `byok_secret_kms_key_arns` |
+
+Notes:
+
+* A secret ARN ends with a random six-character suffix, for example `relyance/inhost/asana/5-AbC123`.
+  End each pattern with `*`. A prefix pattern also covers new connections without a Terraform change.
+* The KMS statement has a `kms:ViaService` condition. The role can use the keys only through Secrets Manager.
+  * If every pattern in `byok_secret_arn_patterns` has a literal region, the condition is
+    `StringEquals kms:ViaService = secretsmanager.<region>.<dns suffix>` for the module region and each of those regions.
+  * If a pattern has a wildcard in the region (for example `arn:aws:secretsmanager:*:...`), the condition is
+    `StringLike kms:ViaService = secretsmanager.*.<dns suffix>`, so secrets in any region can be decrypted.
+  * `<dns suffix>` is the DNS suffix of the partition: `amazonaws.com`, or `amazonaws.com.cn` in `aws-cn`.
+* The AWS managed key `aws/secretsmanager` needs no entry in `byok_secret_kms_key_arns`.
+* If the key policy of a customer-managed key does not delegate to IAM policies, the key policy must also allow the role.
+  Example key policy statement:
+
+  ```json
+  {
+    "Sid": "AllowRelyanceScannerViaSecretsManager",
+    "Effect": "Allow",
+    "Principal": { "AWS": "arn:aws:iam::111122223333:role/Relyance_Sierra" },
+    "Action": ["kms:Decrypt", "kms:GenerateDataKey"],
+    "Resource": "*",
+    "Condition": {
+      "StringEquals": { "kms:ViaService": "secretsmanager.us-west-2.amazonaws.com" }
+    }
+  }
+  ```
+
+  Remove `kms:GenerateDataKey` if `byok_secret_write_back = false`.
+* A secret resource policy is optional for secrets in this account. If a secret has a resource policy with an explicit `Deny`, the policy must not deny the `Relyance_Sierra` role.
+* Secrets in another AWS account are not supported in this version.
+* If `byok_secret_write_back = false`, set `byokSecretWriteBack: false` (Helm) or `SECRET_REF_WRITE_BACK: "false"` (kustomize).
+  See [Token write-back](#token-write-back).
+* The pods must run in a namespace with a Pod Identity association.
+  See [Kubernetes namespace binding](#kubernetes-namespace-binding).
 
 ### Alternate mode: use existing EKS cluster
 
@@ -169,6 +289,13 @@ module "sierra" {
 
   # Enable Datadog log forwarding for Sierra workloads
   enable_datadog = false
+  # Kustomize deployments run in namespace "inhost". Bind it to the scanner role.
+  additional_service_account_namespaces = []
+
+  # BYOK connection secrets in AWS Secrets Manager (empty list = no access granted)
+  byok_secret_arn_patterns = [
+    # "arn:aws:secretsmanager:us-west-2:111122223333:secret:relyance/inhost/*",
+  ]
 }
 
 provider "aws" {
@@ -219,6 +346,13 @@ module "sierra" {
   default_tags = {
     # key = value
   }
+  # Kustomize deployments run in namespace "inhost". Bind it to the scanner role.
+  additional_service_account_namespaces = []
+
+  # BYOK connection secrets in AWS Secrets Manager (empty list = no access granted)
+  byok_secret_arn_patterns = [
+    # "arn:aws:secretsmanager:us-west-2:111122223333:secret:relyance/inhost/*",
+  ]
 }
 
 provider "aws" {
@@ -273,6 +407,7 @@ output "sierra" {
 | [aws_iam_role.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role.reader](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_iam_role.sci](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
+| [aws_iam_role_policy.byok_secrets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_kms_alias.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_alias) | resource |
 | [aws_kms_key.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kms_key) | resource |
@@ -283,15 +418,20 @@ output "sierra" {
 | [aws_iam_policy_document.main_kms_key](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.sci_assume_role_with_web_identity](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_session_context.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_session_context) | data source |
+| [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
 | [http_http.control_plane_access](https://registry.terraform.io/providers/hashicorp/http/latest/docs/data-sources/http) | data source |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
+| <a name="input_additional_service_account_namespaces"></a> [additional\_service\_account\_namespaces](#input\_additional\_service\_account\_namespaces) | Additional Kubernetes namespaces whose 'relyance' service account gets the Relyance\_Sierra role through EKS Pod Identity. The 'sierra' namespace is always bound. Add 'inhost' for the kustomize deployment package, which deploys into namespace 'inhost' by default. | `list(string)` | `[]` | no |
 | <a name="input_assumable_account_ids"></a> [assumable\_account\_ids](#input\_assumable\_account\_ids) | List of account IDs where resources can be assumed. | `list(string)` | `[]` | no |
 | <a name="input_assume_all_roles"></a> [assume\_all\_roles](#input\_assume\_all\_roles) | Enable role assumption on all resources | `bool` | `false` | no |
 | <a name="input_base_name"></a> [base\_name](#input\_base\_name) | base name for all resources | `string` | `"Relyance_Sierra"` | no |
+| <a name="input_byok_secret_arn_patterns"></a> [byok\_secret\_arn\_patterns](#input\_byok\_secret\_arn\_patterns) | ARNs or ARN patterns of the AWS Secrets Manager secrets that hold InHost BYOK connection credentials. The scanner role gets read access (and write access if byok\_secret\_write\_back is true) to these secrets. Example: arn:aws:secretsmanager:us-west-2:111122223333:secret:relyance/inhost/*. An empty list creates no policy. | `list(string)` | `[]` | no |
+| <a name="input_byok_secret_kms_key_arns"></a> [byok\_secret\_kms\_key\_arns](#input\_byok\_secret\_kms\_key\_arns) | ARNs of the customer-managed KMS keys that encrypt the secrets in byok\_secret\_arn\_patterns. The scanner role gets kms:Decrypt (and kms:GenerateDataKey if byok\_secret\_write\_back is true), only through Secrets Manager. Leave empty for secrets encrypted with the AWS managed key aws/secretsmanager. | `list(string)` | `[]` | no |
+| <a name="input_byok_secret_write_back"></a> [byok\_secret\_write\_back](#input\_byok\_secret\_write\_back) | If true, the scanner role gets secretsmanager:PutSecretValue on byok\_secret\_arn\_patterns (and kms:GenerateDataKey on byok\_secret\_kms\_key\_arns). The scanner uses it only when a token refresh changes a token: it writes the changed keys, merged onto the current secret value. A failed write-back is logged and the scan continues with the in-memory token. Set false for read-only secrets, and set the same value in the deployment (output byok\_secret\_write\_back; Helm value byokSecretWriteBack or env var SECRET\_REF\_WRITE\_BACK). With write-back off, vendors that rotate refresh tokens fail after the first refresh; vendors with static credentials are not affected. | `bool` | `true` | no |
 | <a name="input_code_analysis_enabled"></a> [code\_analysis\_enabled](#input\_code\_analysis\_enabled) | Create related resources and set up cross-cloud role assumption for the Code Analyzer | `bool` | `false` | no |
 | <a name="input_create_kubernetes_resources"></a> [create\_kubernetes\_resources](#input\_create\_kubernetes\_resources) | Set false to skip Kubernetes resource creation until you can establish network access to EKS control plane and AWS auth | `bool` | `true` | no |
 | <a name="input_create_vpc_and_eks"></a> [create\_vpc\_and\_eks](#input\_create\_vpc\_and\_eks) | If false, assumes external VPC and EKS exist and skips their creation | `bool` | `true` | no |
@@ -323,6 +463,7 @@ output "sierra" {
 | Name | Description |
 |------|-------------|
 | <a name="output_aws_account_id"></a> [aws\_account\_id](#output\_aws\_account\_id) | AWS account ID where this module is deployed |
+| <a name="output_byok_secret_write_back"></a> [byok\_secret\_write\_back](#output\_byok\_secret\_write\_back) | Whether the scanner role may write refreshed OAuth tokens back to BYOK secrets (var.byok\_secret\_write\_back). Pass it to the deployment: Helm value byokSecretWriteBack, or env var SECRET\_REF\_WRITE\_BACK ("true"/"false") in the kustomize package. The two must match: with false here and write-back on in the deployment, each write-back is denied and logged. |
 | <a name="output_cluster_created_by_module"></a> [cluster\_created\_by\_module](#output\_cluster\_created\_by\_module) | Whether the EKS cluster was created by this module (true) or an existing cluster was used (false) |
 | <a name="output_default_tags"></a> [default\_tags](#output\_default\_tags) | Tags to be applied to all resources |
 | <a name="output_eks_cluster_auto_mode"></a> [eks\_cluster\_auto\_mode](#output\_eks\_cluster\_auto\_mode) | Whether the EKS cluster is running in auto mode. Always true for module-created clusters. |
