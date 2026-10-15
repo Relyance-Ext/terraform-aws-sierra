@@ -37,3 +37,12 @@ output "byok_secret_write_back" {
   description = "Whether the scanner role may write refreshed OAuth tokens back to BYOK secrets (var.byok_secret_write_back). Pass it to the deployment: Helm value byokSecretWriteBack, or env var SECRET_REF_WRITE_BACK (\"true\"/\"false\") in the kustomize package. The two must match: with false here and write-back on in the deployment, each write-back is denied and logged."
   value       = var.byok_secret_write_back
 }
+
+output "findings_object_deletion" {
+  description = "Applied deletion capability for this dedicated findings bucket. Pass unchanged to deployment provisioning. Allows ordinary object deletion and permanent deletion of every version throughout this bucket for the scanner role. Older modules without this output keep deployment deletion gates off."
+  value = {
+    enabled    = true
+    account_id = local.account_id
+    bucket     = module.findings_bucket.id
+  }
+}

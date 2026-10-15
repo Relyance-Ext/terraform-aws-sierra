@@ -8,8 +8,8 @@ module "findings_bucket" {
 
   name                   = "relyance-findings-${local.account_id}${var.s3_bucket_suffix}"
   tags                   = local.default_tags
-  full_access_principals = []
-  rw_access_principals   = [aws_iam_role.main.arn]
+  full_access_principals = [aws_iam_role.main.arn]
+  rw_access_principals   = []
   ro_access_principals   = [aws_iam_role.reader.arn]
   wo_access_principals   = []
   kms_key_arn            = aws_kms_key.main.arn

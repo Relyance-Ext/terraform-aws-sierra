@@ -471,3 +471,15 @@ output "sierra" {
 | <a name="output_oidc_issuer"></a> [oidc\_issuer](#output\_oidc\_issuer) | OIDC URL to be provided to Relyance for cross-cloud access |
 | <a name="output_reader_external_id"></a> [reader\_external\_id](#output\_reader\_external\_id) | External ID required to be passed for the STS assume-role |
 <!-- END_TF_DOCS -->
+
+### Findings object deletion
+
+The scanner role has read, write and delete access throughout the dedicated
+findings bucket, including `s3:DeleteObject` and `s3:DeleteObjectVersion`.
+This covers all matching object versions and all sessions of that role. The
+reader role remains read-only; other customer buckets receive no new grant.
+
+Pass the applied `findings_object_deletion` output unchanged to deployment
+provisioning. Its three fields are `enabled`, `account_id` and `bucket`. Older
+modules without that output keep deployment deletion gates off. This capability
+does not itself schedule Delta compaction, vacuum or noncurrent-version expiry.
