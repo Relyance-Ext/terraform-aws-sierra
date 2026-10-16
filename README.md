@@ -34,7 +34,7 @@ In order to be functional, you must
 
 InHost development codename "Sierra" is still in use for cloud resources.
 
-All resources will have the tag `relyance-sierra` set to the module version.
+All non-node resources will have the tag `relyance-inhost` set to the module version.
 
 * A VPC with subnets
 * outbound NAT + internet gateway
@@ -239,11 +239,12 @@ In this mode, the Terraform module only creates
 # For maintainability, replace hard-coded values with variables or outputs from other modules
 
 module "sierra" {
-  source = "Relyance-Ext/sierra/aws"
+  source  = "Relyance-Ext/sierra/aws"
+  version = "0.8.0"
 
   # The GCP project where findings data is captured
   # To be provided by Relyance; required if code_analysis_enabled is true
-  gcp_project = "example-project"
+  # gcp_project = "example-project"
 
   # Update these to match your AWS environment
 
@@ -286,9 +287,6 @@ module "sierra" {
 
   # If your org enforces tag policy, set true to support auto mode nodes with default_tags applied
   enable_auto_mode_node_tags = false
-
-  # Enable Datadog log forwarding for Sierra workloads
-  enable_datadog = false
   # Kustomize deployments run in namespace "inhost". Bind it to the scanner role.
   additional_service_account_namespaces = []
 
@@ -326,12 +324,19 @@ Remember, the cluster should be auto mode, with EKS pod identity agent addon ins
 # For maintainability, replace hard-coded values with variables or outputs from other modules
 
 module "sierra" {
-  source = "Relyance-Ext/sierra/aws"
+  source  = "Relyance-Ext/sierra/aws"
+  version = "0.8.0"
+
+  # The GCP project where findings data is captured
+  # To be provided by Relyance; required if code_analysis_enabled is true
+  # gcp_project = "example-project"
 
   # Update these to match your AWS environment
   create_vpc_and_eks = false
-  # Expects auto mode cluster with eks-pod-identity-agent addon installed
-  existing_eks_cluster_name = "Customer-Cluster"
+  # Supports both auto mode and standard mode clusters with eks-pod-identity-agent addon installed
+  # Set to true if using an auto mode cluster
+  require_existing_eks_cluster_auto_mode = false
+  existing_eks_cluster_name              = "Customer-Cluster"
 
   # Cross-account scan access
   assumable_account_ids = [] # You must set at least one account ID, or set flag `assume_all_roles`
@@ -467,6 +472,7 @@ output "sierra" {
 | <a name="output_cluster_created_by_module"></a> [cluster\_created\_by\_module](#output\_cluster\_created\_by\_module) | Whether the EKS cluster was created by this module (true) or an existing cluster was used (false) |
 | <a name="output_default_tags"></a> [default\_tags](#output\_default\_tags) | Tags to be applied to all resources |
 | <a name="output_eks_cluster_auto_mode"></a> [eks\_cluster\_auto\_mode](#output\_eks\_cluster\_auto\_mode) | Whether the EKS cluster is running in auto mode. Always true for module-created clusters. |
+| <a name="output_findings_object_deletion"></a> [findings\_object\_deletion](#output\_findings\_object\_deletion) | Applied deletion capability for this dedicated findings bucket. Pass unchanged to deployment provisioning. Allows ordinary object deletion and permanent deletion of every version throughout this bucket for the scanner role. Older modules without this output keep deployment deletion gates off. |
 | <a name="output_enable_auto_mode_node_tags"></a> [enable\_auto\_mode\_node\_tags](#output\_enable\_auto\_mode\_node\_tags) | Is there support for auto mode nodes with custom tags? |
 | <a name="output_oidc_issuer"></a> [oidc\_issuer](#output\_oidc\_issuer) | OIDC URL to be provided to Relyance for cross-cloud access |
 | <a name="output_reader_external_id"></a> [reader\_external\_id](#output\_reader\_external\_id) | External ID required to be passed for the STS assume-role |

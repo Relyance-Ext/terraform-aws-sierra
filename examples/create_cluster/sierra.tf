@@ -7,7 +7,8 @@
 # For maintainability, replace hard-coded values with variables or outputs from other modules
 
 module "sierra" {
-  source = "Relyance-Ext/sierra/aws"
+  source  = "Relyance-Ext/sierra/aws"
+  version = "0.8.0"
 
   # The GCP project where findings data is captured
   # To be provided by Relyance; required if code_analysis_enabled is true
