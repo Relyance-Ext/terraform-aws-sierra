@@ -9,7 +9,7 @@ Visit [relyance.ai](https://relyance.ai) to learn more about our services.
 
 The source module accepts `hashicorp/aws >= 5.79, < 7.0`: provider 5.79 introduced the EKS Auto Mode schema used here, and the upper bound excludes an unreviewed major release. The local submodules (`eks`, `existing_eks`, `vpc`, `s3`, and `node_pools`) have no additional AWS provider pins or remote module dependencies. Defaults and resource addresses are unchanged.
 
-The examples below still pin published module `0.8.0`, whose AWS constraint permits only provider 5.x. They explicitly retain that provider track. Provider 6 consumers need a published module release containing this change before updating their module and provider constraints; this source change does not publish a release. For existing state, follow HashiCorp's [provider 6 upgrade guide](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/guides/version-6-upgrade) and review the customer-specific plan before applying an upgrade.
+Module `0.9.0` supports AWS provider 5.79 and 6.x. The examples below pin module `0.9.0` and select provider 6.x; existing callers can retain provider 5.x within the supported range. For existing state, follow HashiCorp's [provider 6 upgrade guide](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/guides/version-6-upgrade) and review the customer-specific plan before applying an upgrade.
 
 `aws_region.current.name` remains in use because provider 5.79 does not expose the replacement `region` attribute. Provider 6 retains `name` with a deprecation warning. The module already uses `aws_eip.domain`, avoids removed EKS addon arguments, and uses literal booleans for launch template EBS settings. See the [provider 5.79 region schema](https://github.com/hashicorp/terraform-provider-aws/blob/v5.79.0/website/docs/d/region.html.markdown) and [provider 6 migration changes](https://github.com/hashicorp/terraform-provider-aws/blob/v6.0.0/website/docs/guides/version-6-upgrade.html.markdown).
 
@@ -256,21 +256,20 @@ In this mode, the Terraform module only creates
 # For collaboration, configure backend for shared remote state file
 # For maintainability, replace hard-coded values with variables or outputs from other modules
 
-# Module 0.8.0 requires AWS provider 5.x. Use a published module release
-# containing AWS provider 6 support before changing this constraint to 6.x.
+# Sierra 0.9.0 supports AWS providers 5.79 and 6.x; this example selects 6.x.
 terraform {
   required_version = "~> 1.9"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 5.79, < 6.0"
+      version = ">= 6.0, < 7.0"
     }
   }
 }
 
 module "sierra" {
   source  = "Relyance-Ext/sierra/aws"
-  version = "0.8.0"
+  version = "0.9.0"
 
   # The GCP project where findings data is captured
   # To be provided by Relyance; required if code_analysis_enabled is true
@@ -353,21 +352,20 @@ Remember, the cluster should be auto mode, with EKS pod identity agent addon ins
 # For collaboration, configure backend for shared remote state file
 # For maintainability, replace hard-coded values with variables or outputs from other modules
 
-# Module 0.8.0 requires AWS provider 5.x. Use a published module release
-# containing AWS provider 6 support before changing this constraint to 6.x.
+# Sierra 0.9.0 supports AWS providers 5.79 and 6.x; this example selects 6.x.
 terraform {
   required_version = "~> 1.9"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 5.79, < 6.0"
+      version = ">= 6.0, < 7.0"
     }
   }
 }
 
 module "sierra" {
   source  = "Relyance-Ext/sierra/aws"
-  version = "0.8.0"
+  version = "0.9.0"
 
   # The GCP project where findings data is captured
   # To be provided by Relyance; required if code_analysis_enabled is true

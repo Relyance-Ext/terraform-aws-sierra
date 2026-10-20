@@ -7,6 +7,7 @@ Logs, copied fixtures, providers, and an empty HOME stay under .terraform/.
 """
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -90,10 +91,13 @@ for version in VERSIONS:
     for name in ("create_cluster", "use_existing_cluster"):
         example = source / "examples" / name
         path = example / "sierra.tf"
-        path.write_text(path.read_text().replace(
-            'source  = "Relyance-Ext/sierra/aws"\n  version = "0.8.0"',
-            'source = "../.."',
-        ))
+        local_example, replacements = re.subn(
+            r'source\s*=\s*"Relyance-Ext/sierra/aws"\s*\n\s*version\s*=\s*"[^"\n]+"',
+            'source = "../.."', path.read_text(),
+        )
+        if replacements != 1:
+            sys.exit(f"Expected one version-pinned Sierra module in {path}")
+        path.write_text(local_example)
         pin(example, version)
         shutil.copy(wrapper / ".terraform.lock.hcl", example / ".terraform.lock.hcl")
         run(example, "init", "-backend=false", "-input=false", "-no-color")
