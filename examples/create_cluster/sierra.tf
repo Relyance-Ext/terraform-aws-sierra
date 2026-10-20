@@ -6,6 +6,18 @@
 # For collaboration, configure backend for shared remote state file
 # For maintainability, replace hard-coded values with variables or outputs from other modules
 
+# Module 0.8.0 requires AWS provider 5.x. Use a published module release
+# containing AWS provider 6 support before changing this constraint to 6.x.
+terraform {
+  required_version = "~> 1.9"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.79, < 6.0"
+    }
+  }
+}
+
 module "sierra" {
   source  = "Relyance-Ext/sierra/aws"
   version = "0.8.0"

@@ -1,0 +1,29 @@
+name: AWS provider compatibility
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  provider-compatibility:
+    name: AWS ${{ matrix.aws }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        aws: ["5.79.0", "5.100.0", "6.0.0", "6.69.1"]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+      - name: Validate schemas and offline tests
+        run: python3 tests/check_provider_compatibility.py '${{ matrix.aws }}'

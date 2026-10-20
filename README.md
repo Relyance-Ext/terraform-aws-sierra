@@ -5,6 +5,24 @@
 This module is provided for use by customers of Relyance AI.
 Visit [relyance.ai](https://relyance.ai) to learn more about our services.
 
+## AWS provider compatibility
+
+The source module accepts `hashicorp/aws >= 5.79, < 7.0`: provider 5.79 introduced the EKS Auto Mode schema used here, and the upper bound excludes an unreviewed major release. The local submodules (`eks`, `existing_eks`, `vpc`, `s3`, and `node_pools`) have no additional AWS provider pins or remote module dependencies. Defaults and resource addresses are unchanged.
+
+The examples below still pin published module `0.8.0`, whose AWS constraint permits only provider 5.x. They explicitly retain that provider track. Provider 6 consumers need a published module release containing this change before updating their module and provider constraints; this source change does not publish a release. For existing state, follow HashiCorp's [provider 6 upgrade guide](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/guides/version-6-upgrade) and review the customer-specific plan before applying an upgrade.
+
+`aws_region.current.name` remains in use because provider 5.79 does not expose the replacement `region` attribute. Provider 6 retains `name` with a deprecation warning. The module already uses `aws_eip.domain`, avoids removed EKS addon arguments, and uses literal booleans for launch template EBS settings. See the [provider 5.79 region schema](https://github.com/hashicorp/terraform-provider-aws/blob/v5.79.0/website/docs/d/region.html.markdown) and [provider 6 migration changes](https://github.com/hashicorp/terraform-provider-aws/blob/v6.0.0/website/docs/guides/version-6-upgrade.html.markdown).
+
+The pull request workflow runs the four-provider matrix with Terraform 1.9.8 and no cloud secrets. Run the same source compatibility checks locally with Terraform 1.9.x:
+
+```sh
+python3 tests/check_provider_compatibility.py
+# Or select exact stable provider versions:
+python3 tests/check_provider_compatibility.py 5.79.0 5.100.0 6.0.0 6.69.1
+```
+
+The harness installs real provider schemas, checks caller/module constraint intersection, validates both examples against local source, and runs mock plans for existing standard clusters, existing Auto Mode clusters, new clusters, and BYOK policy behavior. The S3 policy test uses a virtual apply to evaluate the provider's local IAM document builder, with every cloud resource overridden and fake credentials. The harness uses an empty HOME and no cloud credentials; it never applies real infrastructure. Downloads, logs and fixtures stay in ignored `.terraform/provider-compatibility/`. This establishes source/schema compatibility; it does not establish a cloud apply, state migration, deployed capacity, or customer qualification.
+
 ## Usage
 
 When you have agreed to sign up for InHost,
@@ -238,6 +256,18 @@ In this mode, the Terraform module only creates
 # For collaboration, configure backend for shared remote state file
 # For maintainability, replace hard-coded values with variables or outputs from other modules
 
+# Module 0.8.0 requires AWS provider 5.x. Use a published module release
+# containing AWS provider 6 support before changing this constraint to 6.x.
+terraform {
+  required_version = "~> 1.9"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.79, < 6.0"
+    }
+  }
+}
+
 module "sierra" {
   source  = "Relyance-Ext/sierra/aws"
   version = "0.8.0"
@@ -323,6 +353,18 @@ Remember, the cluster should be auto mode, with EKS pod identity agent addon ins
 # For collaboration, configure backend for shared remote state file
 # For maintainability, replace hard-coded values with variables or outputs from other modules
 
+# Module 0.8.0 requires AWS provider 5.x. Use a published module release
+# containing AWS provider 6 support before changing this constraint to 6.x.
+terraform {
+  required_version = "~> 1.9"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.79, < 6.0"
+    }
+  }
+}
+
 module "sierra" {
   source  = "Relyance-Ext/sierra/aws"
   version = "0.8.0"
@@ -381,13 +423,13 @@ output "sierra" {
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | ~> 1.9 |
-| <a name="requirement_aws"></a> [aws](#requirement\_aws) | ~> 5.79 |
+| <a name="requirement_aws"></a> [aws](#requirement\_aws) | >= 5.79, < 7.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_aws"></a> [aws](#provider\_aws) | ~> 5.79 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | >= 5.79, < 7.0 |
 | <a name="provider_http"></a> [http](#provider\_http) | n/a |
 | <a name="provider_random"></a> [random](#provider\_random) | n/a |
 | <a name="provider_terraform"></a> [terraform](#provider\_terraform) | n/a |
